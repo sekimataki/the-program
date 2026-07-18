@@ -1,0 +1,3265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Program — Worldwide Cuisine @ San Francisco</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Cormorant+Unicase:wght@400;500&family=Hanken+Grotesk:wght@400&family=Jost:wght@300;400;500&family=Manrope:wght@300;400;500&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Design Tokens ───────────────────────────────────────────────────────── */
+    :root {
+      --color-body:        #fafaf8;
+      --color-panel:       #f7f4f2;
+      --color-border:      #d8d4d1;
+      --color-ink:         #0a0908;
+      --color-ink-dark:    #2a1020;
+      --color-muted:       #6a6564;
+      --color-dim:         #898989;
+      --color-placeholder: #908886;
+      --color-accent:      #c8946a;
+      --color-rose:        #9e6878;
+      --color-pill-active: #6a9ace;
+      --color-map-bg:      #ffd5b5;
+
+      --font-display: 'Cormorant Garamond', Georgia, serif;
+      --font-unicase: 'Cormorant Unicase', Georgia, serif;
+      --font-ui:      'Jost', system-ui, sans-serif;
+      --font-stat:    'Hanken Grotesk', system-ui, sans-serif;
+      --font-body:    'Manrope', system-ui, sans-serif;
+      --font-newsreader: 'Newsreader', Georgia, serif;
+
+      --panel-width:      602px;
+      --panel-pad-x:      27px;
+      --topbar-h:         52px;
+      --bottom-sheet-h:   305px;
+      --radius-pill:      999px;
+      --radius-card:      8px;
+      --radius-thumb:     4px;
+      --radius-filter:    4px;
+      --filter-bg:        rgba(216, 212, 209, 0.2);
+      --card-shadow:      0 0 6px rgba(200, 148, 106, 0.15);
+      --filter-popover-gap: 1px;
+      --filter-popover-shadow: 0 3px 4px rgba(117, 118, 119, 0.1);
+      --detail-shadow-small: 0 1px 4px rgba(117, 118, 119, 0.08);
+      --mobile-topbar-shadow: 0 2px 8px rgba(42, 16, 32, 0.12);
+      --page-size:        50;
+
+      --ease-panel:   cubic-bezier(0.4, 0, 0.2, 1);
+      --dur-fast:     120ms;
+      --dur-mid:      150ms;
+      --dur-panel:    300ms;
+    }
+
+    /* ── Reset ───────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--color-body);
+      color: var(--color-ink);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    button { font-family: var(--font-ui); cursor: pointer; border: none; background: none; color: inherit; }
+    input  { font-family: var(--font-ui); }
+
+    /* ── Desktop two-column layout ───────────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: var(--panel-width) 1fr;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Left Panel (desktop) ────────────────────────────────────────────────── */
+    .panel-left {
+      background: var(--color-panel);
+      border: 1px solid var(--color-border);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 39px var(--panel-pad-x) 24px;
+    }
+
+    .panel-left.detail-open {
+      padding: 0;
+      background: white;
+    }
+
+    .browse-view {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .panel-left.detail-open .browse-view {
+      display: none;
+    }
+
+    /* ── Left detail view (desktop) ──────────────────────────────────────────── */
+    .left-detail-view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      background: white;
+      scrollbar-width: none;
+    }
+    .left-detail-view::-webkit-scrollbar { display: none; }
+    .panel-left.detail-open .left-detail-view { display: flex; }
+
+    .left-detail-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      flex-shrink: 0;
+      height: 49px;
+      background: var(--color-panel);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 13px;
+      gap: 16px;
+    }
+    .left-detail-close {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-pill);
+      background: var(--color-ink-dark);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 6px;
+    }
+    .left-detail-close:hover { opacity: 0.85; }
+    .left-detail-close-icon {
+      width: 12px;
+      height: 12px;
+      display: block;
+      filter: brightness(0) invert(1);
+    }
+    .left-detail-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+      flex: 1;
+      min-width: 0;
+    }
+    .left-detail-nav-country {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      padding: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+      cursor: pointer;
+    }
+    .left-detail-nav-country:disabled {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .left-detail-nav-btn {
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .left-detail-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    .left-detail-nav-chevron {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+    .left-detail-nav-chevron-prev { transform: rotate(180deg); }
+
+    .left-detail-hero {
+      width: 100%;
+      height: 248px;
+      object-fit: cover;
+      display: block;
+      flex-shrink: 0;
+      background: var(--color-border);
+    }
+
+    .left-detail-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 19px var(--panel-pad-x) 32px;
+      width: 100%;
+      max-width: 100%;
+    }
+    .left-detail-intro {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+    }
+    .left-detail-pills {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      min-height: 22px;
+    }
+    .left-detail-title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .left-detail-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .left-detail-name {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 400;
+      line-height: normal;
+      color: var(--color-ink-dark);
+    }
+    .left-detail-title-row .peek-bookmark {
+      align-self: center;
+    }
+    .left-detail-title-block .peek-meta {
+      letter-spacing: 0.02em;
+    }
+    .left-detail-title-block .peek-rating {
+      font-family: var(--font-stat);
+      font-weight: 400;
+    }
+    .left-detail-sections {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+    }
+    .left-detail-fact-card {
+      display: block;
+      padding: 12px 16px 12px 12px;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card);
+      background: white;
+      height: 160px;
+      max-height: 160px;
+      overflow: hidden;
+      box-shadow: var(--detail-shadow-small);
+      width: 100%;
+    }
+    .left-detail-fact-inner {
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+      height: 100%;
+      width: 100%;
+    }
+    .left-detail-fact-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: 100%;
+    }
+    .left-detail-fact-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      flex-shrink: 0;
+    }
+    .left-detail-fact-nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 24px;
+      flex: 1;
+      min-width: 0;
+    }
+    .left-detail-fact-nav-btn {
+      width: 12px;
+      height: 12px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .left-detail-fact-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    .left-detail-fact-chevron {
+      width: 12px;
+      height: 12px;
+      display: block;
+    }
+    .left-detail-fact-chevron-prev { transform: rotate(90deg); }
+    .left-detail-fact-chevron-next { transform: rotate(-90deg); }
+    .left-detail-fact-photo-wrap {
+      height: 100%;
+      aspect-ratio: 838 / 900;
+      border-radius: var(--radius-thumb);
+      overflow: hidden;
+      flex-shrink: 0;
+      background: var(--color-border);
+    }
+    .left-detail-fact-photo {
+      width: 161.1%;
+      height: 100%;
+      max-width: none;
+      margin-left: -30.95%;
+      object-fit: cover;
+      display: block;
+    }
+    .left-detail-section-label {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    .left-detail-body-text {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 300;
+      line-height: 1.65;
+      color: var(--color-ink-dark);
+    }
+    .left-detail-fact-body .left-detail-body-text {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .left-detail-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+    .left-detail-help-icon {
+      width: 12px;
+      height: 12px;
+      display: block;
+      flex-shrink: 0;
+    }
+    .left-detail-dishes {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 300;
+      line-height: 1.65;
+      color: var(--color-ink-dark);
+      padding-left: 21px;
+      list-style: disc;
+    }
+    .left-detail-dishes li + li {
+      margin-top: 0;
+    }
+    .left-detail-review-text {
+      min-height: 100px;
+    }
+
+    /* ── Mobile detail modal (Figma 127-1256) ───────────────────────────────── */
+    .mobile-detail-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 160;
+      pointer-events: none;
+    }
+    .mobile-detail-modal.open {
+      display: block;
+      pointer-events: auto;
+    }
+    .mobile-detail-scrim {
+      position: absolute;
+      top: var(--topbar-h);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(42, 16, 32, 0.4);
+    }
+    .mobile-detail-panel {
+      position: absolute;
+      top: var(--topbar-h);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      border-top: 1px solid var(--color-border);
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .mobile-detail-panel::-webkit-scrollbar { display: none; }
+    .mobile-detail-close {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 2;
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-pill);
+      background: var(--color-ink-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+    }
+    .mobile-detail-close-icon {
+      width: 12px;
+      height: 12px;
+      display: block;
+      filter: brightness(0) invert(1);
+    }
+    .mobile-detail-hero {
+      width: 100%;
+      height: 248px;
+      object-fit: cover;
+      display: block;
+      background: var(--color-border);
+    }
+    .mobile-detail-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 18px 27px 32px;
+      width: 100%;
+    }
+    .detail-fact-total {
+      color: var(--color-border);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-shrink: 0;
+      margin-bottom: 30px;
+    }
+
+    .masthead { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
+    .masthead-title {
+      font-family: var(--font-unicase);
+      font-size: 32px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: var(--color-ink);
+      line-height: 1;
+    }
+    .masthead-eyebrow {
+      font-family: var(--font-ui);
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--color-dim);
+      text-transform: capitalize;
+    }
+
+    .results-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ── Search pill ─────────────────────────────────────────────────────────── */
+    .search-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      background: white;
+      border-radius: var(--radius-pill);
+      height: 36px;
+      padding: 4px;
+      padding-left: 12px;
+      width: 238px;
+      flex-shrink: 0;
+    }
+    .search-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .search-icon { width: 16px; height: 16px; flex-shrink: 0; display: block; }
+    .search-input {
+      flex: 1; border: none; background: none;
+      font-size: 16px; font-weight: 400; color: var(--color-muted); outline: none; min-width: 0;
+      line-height: 18px;
+    }
+    .search-input::placeholder { color: var(--color-placeholder); }
+    .search-pill.has-query .search-icon { display: none; }
+    .search-pill.has-query .search-input { color: var(--color-ink-dark); }
+    .search-clear {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .search-clear img {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+    .search-pill.has-query .search-clear { display: flex; }
+    .surprise-btn {
+      background: var(--color-accent); color: white;
+      border-radius: var(--radius-pill); padding: 6px 12px;
+      font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 4px; flex-shrink: 0; height: 28px;
+    }
+    .search-pill.has-query .surprise-btn {
+      width: 28px;
+      padding: 6px;
+      justify-content: center;
+    }
+    .search-pill.has-query .surprise-btn-label { display: none; }
+    .surprise-btn:hover { opacity: 0.85; }
+
+    /* ── Filter bar ──────────────────────────────────────────────────────────── */
+    .filter-bar { display: flex; gap: 4px; width: 100%; position: relative; z-index: 1; }
+    .filter-dropdown-wrap { flex: 1; position: relative; }
+    .filter-dropdown-btn {
+      width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      background: var(--filter-bg);
+      border: none; border-radius: var(--radius-filter);
+      padding: 8px 12px;
+      font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted);
+      cursor: pointer;
+    }
+    .filter-dropdown-btn:hover { color: var(--color-ink); }
+    .filter-dropdown-btn.active {
+      background: rgba(216, 212, 209, 0.6);
+      color: var(--color-ink);
+    }
+    .filter-chevron { width: 12px; height: 12px; display: block; flex-shrink: 0; }
+
+    .rating-popover {
+      display: none;
+      position: absolute;
+      top: calc(100% + var(--filter-popover-gap));
+      left: 0;
+      width: 180px;
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-filter);
+      box-shadow: var(--filter-popover-shadow);
+      padding: 12px 0 16px;
+      z-index: 200;
+    }
+    .rating-popover.open { display: block; }
+    .rating-popover-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px 20px;
+    }
+    .rating-popover .rating-display {
+      font-family: var(--font-stat);
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--color-accent);
+      line-height: normal;
+      margin: 0;
+    }
+    .rating-slider-field {
+      width: 100%;
+      height: 8px;
+      display: flex;
+      align-items: center;
+    }
+    .rating-popover input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      margin: 0;
+      background: transparent;
+      cursor: pointer;
+      --rating-fill: 0%;
+    }
+    .rating-popover input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(
+        to right,
+        #6a6564 0%,
+        #6a6564 var(--rating-fill),
+        #d8d4d1 var(--rating-fill),
+        #d8d4d1 100%
+      );
+    }
+    .rating-popover input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-ink);
+      margin-top: -2px;
+    }
+    .rating-popover input[type="range"]::-moz-range-track {
+      height: 4px;
+      border-radius: 2px;
+      background: #d8d4d1;
+    }
+    .rating-popover input[type="range"]::-moz-range-progress {
+      height: 4px;
+      border-radius: 2px;
+      background: #6a6564;
+    }
+    .rating-popover input[type="range"]::-moz-range-thumb {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-ink);
+      border: none;
+    }
+
+    /* ── Sort popover ────────────────────────────────────────────────────────── */
+    .sort-popover {
+      display: none;
+      position: absolute;
+      top: calc(100% + var(--filter-popover-gap));
+      right: 0;
+      left: auto;
+      width: 180px;
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-filter);
+      box-shadow: var(--filter-popover-shadow);
+      overflow: hidden;
+      z-index: 200;
+      flex-direction: column;
+    }
+    .sort-popover.open { display: flex; }
+    .sort-option {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      background: white;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sort-option:hover {
+      background: var(--color-border);
+      color: var(--color-ink-dark);
+    }
+    .sort-option[aria-pressed="true"] {
+      background: var(--color-ink-dark);
+      color: white;
+    }
+    .sort-option[aria-pressed="true"]:hover {
+      background: var(--color-ink-dark);
+      color: white;
+    }
+
+    /* ── Rating slider ───────────────────────────────────────────────────────── */
+    .filter-section { display: flex; flex-direction: column; gap: 8px; }
+    .filter-label-row { display: flex; align-items: center; justify-content: space-between; }
+    .filter-label {
+      font-family: var(--font-ui); font-size: 10px; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted);
+    }
+    .rating-display { font-family: var(--font-stat); font-size: 10px; color: var(--color-accent); }
+    input[type="range"] {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 2px; background: var(--color-border); outline: none; cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 14px; height: 14px;
+      border-radius: 50%; background: var(--color-accent); cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--color-accent); cursor: pointer; border: none;
+    }
+
+    /* ── Cuisine filter ──────────────────────────────────────────────────────── */
+    .filter-controls { position: relative; flex-shrink: 0; }
+
+    .cuisines-popover {
+      display: none;
+      position: absolute;
+      top: calc(100% + var(--filter-popover-gap));
+      left: 0;
+      width: 100%;
+      background: white;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-filter);
+      box-shadow: var(--filter-popover-shadow);
+      padding: 20px 24px;
+      z-index: 200;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .cuisines-popover.open { display: flex; }
+    .cuisines-popover-scroll {
+      max-height: 480px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      width: 100%;
+    }
+    .cuisines-popover-scroll::-webkit-scrollbar { display: none; }
+    .cuisine-genre-list { display: flex; flex-direction: column; gap: 20px; width: 100%; }
+    .cuisine-genre-row {
+      display: flex;
+      gap: 3px;
+      align-items: flex-start;
+      width: 100%;
+    }
+    .cuisine-genre-label {
+      width: 100px;
+      flex-shrink: 0;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      line-height: 1.4;
+      margin: 0;
+    }
+    .cuisine-genre-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .cuisine-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 12px;
+      background: white;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-muted);
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .cuisine-pill:hover:not([aria-pressed="true"]) {
+      background: var(--color-border);
+      color: var(--color-ink-dark);
+      border-color: var(--color-border);
+    }
+    .cuisine-pill[aria-pressed="true"] {
+      background: var(--color-ink-dark);
+      color: white;
+      border-color: var(--color-ink-dark);
+    }
+    .cuisine-pill[aria-pressed="true"]:hover {
+      background: var(--color-ink-dark);
+      color: white;
+      border-color: var(--color-ink-dark);
+    }
+    .cuisines-popover-divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 0;
+      width: 100%;
+    }
+    .cuisines-popover-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 20px;
+      width: 100%;
+    }
+    .cuisines-clear-btn {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-ink-dark);
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    .cuisines-clear-btn:hover { opacity: 0.75; }
+    .cuisines-apply-btn {
+      background: var(--color-ink-dark);
+      color: white;
+      border: none;
+      border-radius: var(--radius-pill);
+      padding: 6px 12px;
+      height: 28px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .cuisines-apply-btn:hover { opacity: 0.85; }
+
+    .cuisine-section { display: flex; flex-direction: column; gap: 16px; }
+    .genre-toggle {
+      font-family: var(--font-ui); font-size: 10px; font-weight: 500;
+      color: var(--color-muted); padding: 0;
+    }
+    .genre-toggle:hover { color: var(--color-ink); }
+
+    .continent-tabs { display: flex; gap: 12px; }
+    .continent-tab {
+      font-family: var(--font-ui); font-size: 10px; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-dim);
+      padding: 0; background: none; border: none; cursor: pointer;
+    }
+    .continent-tab.active { color: var(--color-ink-dark); }
+    .continent-tab:hover:not(.active) { color: var(--color-muted); }
+
+    .country-pills { display: flex; flex-wrap: wrap; gap: 5px; }
+    .country-pill {
+      display: flex; align-items: center; justify-content: center;
+      padding: 4px 8px; background: white;
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-pill);
+      font-family: var(--font-ui); font-size: 12px; font-weight: 400;
+      color: var(--color-muted); letter-spacing: 0.06em; white-space: nowrap; cursor: pointer;
+      opacity: 0.4;
+      transition: opacity var(--dur-fast) ease;
+    }
+    .country-pill[aria-pressed="true"] { opacity: 1; }
+    .country-pill:hover { opacity: 0.7; }
+    .country-pill[aria-pressed="true"]:hover { opacity: 1; }
+
+    /* ── Results meta + pagination ───────────────────────────────────────────── */
+    .results-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .results-count {
+      font-family: var(--font-ui); font-size: 12px; font-weight: 400;
+      color: var(--color-dim);
+    }
+    .pagination-nav { display: flex; gap: 16px; align-items: center; }
+    .page-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; padding: 0; border: none; background: none;
+      cursor: pointer; opacity: 1;
+    }
+    .page-btn:disabled { opacity: 0.3; cursor: default; }
+    .page-btn img { width: 16px; height: 16px; display: block; }
+    .page-btn-prev img { transform: rotate(180deg); }
+
+    /* ── Card list ───────────────────────────────────────────────────────────── */
+    .card-list {
+      display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto; flex: 1; min-height: 0;
+      scrollbar-width: none;
+      filter: drop-shadow(var(--card-shadow));
+    }
+    .card-list::-webkit-scrollbar { display: none; }
+
+    /* ── Map panel ───────────────────────────────────────────────────────────── */
+    .panel-map {
+      position: relative; overflow: hidden; height: 100vh; background: var(--color-map-bg);
+    }
+    .bay-area-map { width: 100%; height: 100%; display: block; }
+    .map-label {
+      font-family: var(--font-ui); font-weight: 400;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      pointer-events: none; user-select: none;
+    }
+    .restaurant-dot {
+      cursor: pointer; stroke: white; stroke-width: 1.5;
+      transition: transform var(--dur-fast) ease;
+      transform-box: fill-box; transform-origin: center;
+    }
+    .restaurant-dot:hover { transform: scale(1.4); }
+    .restaurant-dot.highlighted { stroke: var(--color-accent); stroke-width: 2.5; }
+    .restaurant-dot.selected { stroke: var(--color-ink-dark); stroke-width: 2.5; }
+
+    /* ── Peek cards ────────────────────────────────────────────────────────── */
+    .peek-row {
+      display: none;
+    }
+
+    /* Shared peek card styles */
+    .peek-card {
+      flex-shrink: 0; width: 100%; background: white;
+      border: 0.5px solid var(--color-border); border-radius: var(--radius-card);
+      padding: 12px 16px; display: flex; flex-direction: column; gap: 12px;
+      cursor: pointer; transition: border-color var(--dur-fast) ease;
+    }
+    .peek-card:hover { border-color: var(--color-muted); }
+    .peek-card.highlighted { border-color: var(--color-accent); }
+    .peek-card-body { display: flex; gap: 16px; align-items: flex-start; width: 100%; }
+    .peek-card-photo {
+      width: 180px; height: 111px; flex-shrink: 0;
+      border-radius: var(--radius-thumb); object-fit: cover; display: block;
+      background: #d9d9d9;
+    }
+    .peek-card-content {
+      flex: 1; min-width: 0; display: flex; flex-direction: column;
+      justify-content: space-between; align-self: stretch;
+    }
+    .peek-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; }
+    .peek-country-pill {
+      display: flex; align-items: center; padding: 4px 12px;
+      background: white; border: 0.5px solid var(--color-border); border-radius: var(--radius-pill);
+      font-family: var(--font-ui); font-size: 12px; font-weight: 400;
+      color: var(--color-muted); letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
+    }
+    .peek-tag {
+      background: var(--color-accent); border-radius: var(--radius-pill); padding: 4px 12px;
+      font-family: var(--font-ui); font-size: 12px; font-weight: 400;
+      color: white; letter-spacing: 0.06em; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+    }
+    .peek-card-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+    .peek-card-bottom { display: flex; gap: 12px; align-items: flex-end; width: 100%; }
+    .peek-name {
+      font-family: var(--font-display); font-size: 20px; font-weight: 400;
+      color: var(--color-ink-dark); line-height: 1.15;
+    }
+    .peek-meta {
+      font-family: var(--font-ui); font-size: 12px; font-weight: 300;
+      color: var(--color-muted); letter-spacing: 0.02em;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .peek-meta-icon, .peek-rating-icon { width: 12px; height: 12px; flex-shrink: 0; display: block; }
+    .peek-rating {
+      font-family: var(--font-ui); font-size: 12px; font-weight: 400;
+      color: var(--color-accent); display: flex; align-items: center; gap: 4px;
+    }
+    .peek-bookmark {
+      width: 16px; height: 16px; flex-shrink: 0; display: block;
+      align-self: flex-end;
+    }
+    /* CTA shown only on mobile */
+    .peek-cta {
+      display: none;
+      width: 100%; padding: 4px;
+      border: 0.5px solid var(--color-border);
+      font-family: var(--font-ui); font-size: 12px; font-weight: 300;
+      color: var(--color-ink-dark); letter-spacing: 0.06em;
+      background: none; cursor: pointer;
+      align-items: center; justify-content: center;
+    }
+
+    /* ── Mobile top bar ──────────────────────────────────────────────────────── */
+    .mobile-topbar {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: var(--color-panel);
+      box-shadow: var(--mobile-topbar-shadow);
+      align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      z-index: 200;
+    }
+    .mobile-topbar-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+      justify-content: center;
+    }
+    .mobile-topbar-title {
+      font-family: var(--font-unicase);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-ink-dark);
+      white-space: nowrap;
+    }
+    .mobile-topbar-sub {
+      font-family: var(--font-newsreader);
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--color-dim);
+      text-transform: capitalize;
+    }
+    .mobile-topbar .surprise-btn {
+      flex-shrink: 0;
+      height: 28px;
+    }
+
+    /* ── Mobile bottom sheet ─────────────────────────────────────────────────── */
+    .mobile-bottom-sheet {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--bottom-sheet-h);
+      background: var(--color-panel);
+      flex-direction: column;
+      padding: 24px 20px 20px;
+      z-index: 150;
+      overflow: hidden;
+    }
+    .mobile-browse-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+      min-height: 0;
+    }
+    .mobile-search-pill {
+      width: 100%;
+      flex-shrink: 0;
+      gap: 8px;
+    }
+    .mobile-search-pill .search-left {
+      flex: 1;
+      min-width: 0;
+    }
+    .mobile-search-pill .search-icon {
+      width: 12px;
+      height: 12px;
+    }
+    .mobile-search-pill .search-input {
+      font-size: 12px;
+      line-height: 18px;
+    }
+    .mobile-search-pill.has-query .search-icon {
+      display: none;
+    }
+    .mobile-search-pill.has-query .search-input {
+      color: var(--color-ink);
+    }
+    .mobile-search-clear {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .mobile-search-clear img {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+    .mobile-search-pill.has-query .mobile-search-clear {
+      display: flex;
+    }
+    .mobile-filters-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 100%;
+      padding: 6px 12px;
+      background: var(--color-panel);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      flex-shrink: 0;
+    }
+    .mobile-search-pill.has-query .mobile-filters-btn {
+      width: 28px;
+      padding: 6px;
+    }
+    .mobile-search-pill.has-query .mobile-filters-label {
+      display: none;
+    }
+    .mobile-filters-btn img {
+      width: 12px;
+      height: 12px;
+      display: block;
+      flex-shrink: 0;
+    }
+    .mobile-filters-btn.active {
+      background: var(--color-border);
+    }
+    .mobile-editorial-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-height: 0;
+    }
+    .mobile-section-label {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      color: var(--color-muted);
+      flex-shrink: 0;
+    }
+    .mobile-peek-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      scrollbar-width: none;
+      flex: 1;
+      align-items: flex-start;
+      min-height: 0;
+      cursor: grab;
+    }
+    .mobile-peek-row.is-dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+    .mobile-peek-row.is-dragging .mobile-peek-card {
+      pointer-events: none;
+    }
+    .mobile-peek-row::-webkit-scrollbar { display: none; }
+
+    .mobile-peek-card {
+      flex-shrink: 0;
+      width: 240px;
+      background: var(--color-panel);
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-card);
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .mobile-peek-card:hover { border-color: var(--color-muted); }
+    .mobile-peek-card.highlighted { border-color: var(--color-accent); }
+    .mobile-peek-photo {
+      width: 100%;
+      height: 60px;
+      object-fit: cover;
+      display: block;
+      background: var(--color-border);
+      flex-shrink: 0;
+    }
+    .mobile-peek-content {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    .mobile-peek-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+    }
+    .mobile-peek-country-pill {
+      display: flex;
+      align-items: center;
+      padding: 4px 8px;
+      background: white;
+      border: 0.5px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--color-muted);
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .mobile-peek-tag {
+      background: var(--color-accent);
+      border-radius: var(--radius-pill);
+      padding: 2px 8px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      font-weight: 400;
+      color: white;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+    .mobile-peek-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+    }
+    .mobile-peek-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 400;
+      line-height: normal;
+      color: var(--color-ink-dark);
+    }
+    .mobile-peek-meta {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 300;
+      color: var(--color-muted);
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mobile-peek-meta-icon,
+    .mobile-peek-rating-icon {
+      width: 12px;
+      height: 12px;
+      flex-shrink: 0;
+      display: block;
+    }
+    .mobile-peek-rating {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-accent);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── Mobile dot-selected sheet ──────────────────────────────────────────── */
+    .mobile-dot-content {
+      display: none; flex-direction: column; gap: 8px;
+      height: 100%; overflow-y: auto; scrollbar-width: none;
+      align-items: flex-start;
+    }
+    .mobile-dot-content::-webkit-scrollbar { display: none; }
+
+    .mobile-bottom-sheet.dot-selected {
+      border-radius: 16px 16px 0 0;
+      padding: 12px 24px 24px;
+    }
+    .mobile-bottom-sheet.dot-selected .mobile-browse-content { display: none; }
+    .mobile-bottom-sheet.dot-selected .mobile-dot-content { display: flex; }
+
+    .mobile-dot-content .peek-cta { display: flex; }
+
+    .mobile-drag-handle {
+      width: 36px; height: 4px;
+      background: var(--color-muted); border-radius: 2px;
+      align-self: center; flex-shrink: 0;
+    }
+    .mobile-dot-photo {
+      width: 100%; height: 114px;
+      object-fit: cover; display: block; flex-shrink: 0;
+    }
+
+    /* ── Mobile filter modal (Figma 127-1009) ─────────────────────────────────── */
+    .mobile-filter-modal {
+      display: none;
+      position: fixed;
+      top: var(--topbar-h);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      z-index: 180;
+      flex-direction: column;
+    }
+    .mobile-filter-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: none;
+      padding: 24px 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .mobile-filter-scroll::-webkit-scrollbar { display: none; }
+    .mobile-filter-back {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-ink-dark);
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .mobile-filter-back-chevron {
+      width: 16px;
+      height: 16px;
+      display: block;
+      transform: rotate(180deg);
+      flex-shrink: 0;
+    }
+    .mobile-filter-rating {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+      flex-shrink: 0;
+    }
+    .mobile-filter-label-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .mobile-filter-section-title {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-ink-dark);
+    }
+    .mobile-filter-rating .rating-display {
+      font-family: var(--font-stat);
+      font-size: 10px;
+      color: var(--color-accent);
+    }
+    .mobile-filter-cuisines {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      padding-bottom: 20px;
+    }
+    .mobile-filter-footer {
+      flex-shrink: 0;
+      padding: 0 20px 20px;
+      background: white;
+    }
+    .mobile-filter-divider {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 0 0 20px;
+      width: 100%;
+    }
+    .mobile-filter-footer-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 20px;
+    }
+    .mobile-filter-clear-btn {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-ink-dark);
+      padding: 0;
+    }
+    .mobile-filter-apply-btn {
+      background: var(--color-ink-dark);
+      color: white;
+      border-radius: var(--radius-pill);
+      padding: 6px 12px;
+      height: 28px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .mobile-dot-content .peek-card-top { width: 100%; }
+    .mobile-dot-content .peek-cta { width: 100%; margin-top: auto; }
+
+    /* ── Right detail panel ──────────────────────────────────────────────────── */
+    .panel-right {
+      position: fixed; top: 0; right: 0; width: 400px; height: 100vh;
+      background: var(--color-panel); border-left: 1px solid var(--color-border);
+      transform: translateX(100%); transition: transform var(--dur-panel) var(--ease-panel);
+      z-index: 400; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column;
+    }
+    .panel-right::-webkit-scrollbar { display: none; }
+    body.panel-open .panel-right { transform: translateX(0); }
+    .panel-close {
+      position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 300; color: white;
+      background: rgba(42, 16, 32, 0.5); cursor: pointer; border: none; z-index: 2;
+      transition: background-color var(--dur-fast) ease;
+    }
+    .panel-close:hover { background: rgba(42, 16, 32, 0.85); }
+    .panel-hero { position: relative; flex-shrink: 0; height: 234px; }
+    .panel-hero-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .panel-hero-bg { position: absolute; inset: 0; }
+    .panel-content { padding: 20px 24px 80px; display: flex; flex-direction: column; gap: 8px; }
+    .panel-header-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    }
+    .panel-name {
+      font-family: var(--font-display); font-size: 28px; font-weight: 400;
+      line-height: 1.15; color: var(--color-ink-dark);
+    }
+    .panel-address {
+      font-family: var(--font-ui); font-size: 12px; font-weight: 300;
+      color: var(--color-muted); display: flex; align-items: center; gap: 4px;
+    }
+    .panel-rating {
+      font-family: var(--font-stat); font-size: 12px; color: var(--color-accent);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .panel-divider-thin { border: none; border-top: 0.5px solid var(--color-border); margin: 12px 0; }
+    .panel-sections { display: flex; flex-direction: column; gap: 20px; }
+    .panel-section { display: flex; flex-direction: column; gap: 4px; }
+    .panel-section-label {
+      font-family: var(--font-ui); font-size: 8px; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-rose);
+      display: block;
+    }
+    .panel-dishes {
+      font-family: var(--font-display); font-size: 14px; font-weight: 300;
+      line-height: 1.65; color: var(--color-ink-dark); padding-left: 16px;
+    }
+    .panel-body-text {
+      font-family: var(--font-display); font-size: 14px; font-weight: 300;
+      line-height: 1.65; color: var(--color-ink-dark);
+    }
+    .panel-scroll-hint {
+      display: flex; align-items: center; gap: 4px; justify-content: center; margin-top: 8px;
+      font-family: var(--font-ui); font-size: 10px; font-weight: 400;
+      letter-spacing: 0.02em; color: var(--color-dim);
+    }
+
+    /* ── Mobile breakpoint ───────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      html, body { overflow: hidden; }
+
+      .layout {
+        grid-template-columns: 1fr;
+        height: 100vh;
+      }
+      .panel-left { display: none; }
+      .panel-map {
+        height: 100vh;
+        padding-top: var(--topbar-h);
+        padding-bottom: var(--bottom-sheet-h);
+      }
+      /* Dots visible through the full unclipped map */
+      .bay-area-map { width: 100%; height: 100%; }
+
+      .peek-row { display: none; }
+
+      .mobile-topbar { display: flex; }
+      .mobile-bottom-sheet { display: flex; }
+      .mobile-filter-modal.open { display: flex; }
+      .mobile-detail-modal.open { display: block; }
+
+      #mobile-map-image {
+        transform: translateX(-29.6%);
+        width: 218.16%;
+        height: 100.04%;
+      }
+
+      /* Right panel takes full width below topbar on mobile */
+      .panel-right {
+        width: 100%;
+        top: var(--topbar-h);
+        height: calc(100vh - var(--topbar-h));
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Mobile top bar ────────────────────────────────────────────────────── -->
+  <header class="mobile-topbar" id="mobile-topbar">
+    <div class="mobile-topbar-brand">
+      <span class="mobile-topbar-title">The Program</span>
+      <span class="mobile-topbar-sub">Worldwide cuisine @ San Francisco</span>
+    </div>
+    <button class="surprise-btn" id="mobile-surprise-btn" type="button" aria-label="Surprise me">✦ Surprise me</button>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Desktop left panel ───────────────────────────────────────────────── -->
+    <aside class="panel-left" id="panel-left">
+
+      <div class="browse-view" id="browse-view">
+
+      <div class="panel-header">
+        <header class="masthead">
+          <h1 class="masthead-title">The Program</h1>
+          <p class="masthead-eyebrow">Worldwide cuisine @ San Francisco</p>
+        </header>
+
+        <div class="search-pill" id="desktop-search-pill">
+          <div class="search-left">
+            <img class="search-icon" src="assets/icon-search.svg" alt="" aria-hidden="true">
+            <input class="search-input" id="search-input" type="text" placeholder="Search"
+              aria-label="Search by restaurant, country, or address" autocomplete="off">
+            <button type="button" class="search-clear" id="search-clear" aria-label="Clear search">
+              <img src="assets/XIcon.svg" alt="" aria-hidden="true">
+            </button>
+          </div>
+          <button class="surprise-btn" id="surprise-btn" type="button" aria-label="Surprise me">
+            <span class="surprise-btn-icon" aria-hidden="true">✦</span>
+            <span class="surprise-btn-label">Surprise me</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="results-section">
+        <div class="filter-controls" id="filter-controls">
+        <div class="filter-bar" role="group" aria-label="Filters">
+          <div class="filter-dropdown-wrap" id="filter-rating-wrap">
+            <button class="filter-dropdown-btn" id="filter-rating-btn" type="button" aria-expanded="false" aria-controls="filter-rating-panel">
+              <span class="filter-btn-label" id="filter-rating-label">Rating (★4.0+)</span>
+              <img class="filter-chevron" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+            </button>
+            <div class="rating-popover" id="filter-rating-panel">
+              <div class="rating-popover-inner">
+                <p class="rating-display" id="rating-display" aria-live="polite">★  4.0 +</p>
+                <div class="rating-slider-field">
+                  <input type="range" id="rating-slider" min="4" max="5" step="0.1" value="4"
+                    aria-label="Minimum rating filter" aria-valuetext="4.0 stars and above">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="filter-dropdown-wrap" id="filter-cuisines-wrap">
+            <button class="filter-dropdown-btn" id="filter-cuisines-btn" type="button" aria-expanded="false" aria-controls="filter-cuisines-panel">
+              <span class="filter-btn-label" id="filter-cuisines-label">Cuisines</span>
+              <img class="filter-chevron" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+            </button>
+          </div>
+          <div class="filter-dropdown-wrap" id="filter-sort-wrap">
+            <button class="filter-dropdown-btn" id="filter-sort-btn" type="button" aria-expanded="false" aria-controls="filter-sort-panel">
+              <span class="filter-btn-label" id="filter-sort-label">Sort (rating)</span>
+              <img class="filter-chevron" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+            </button>
+            <div class="sort-popover" id="filter-sort-panel" role="listbox" aria-label="Sort results">
+              <button class="sort-option" type="button" data-sort="rating-desc" role="option" aria-pressed="true">Rating (High to low)</button>
+              <button class="sort-option" type="button" data-sort="name-asc" role="option" aria-pressed="false">Alphabetical (A to Z)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cuisines-popover" id="filter-cuisines-panel">
+          <div class="cuisines-popover-scroll">
+            <div class="cuisine-genre-list" id="cuisines-genre-list" role="group" aria-label="Filter by cuisine"></div>
+          </div>
+          <hr class="cuisines-popover-divider">
+          <div class="cuisines-popover-footer">
+            <button type="button" class="cuisines-clear-btn" id="cuisines-clear-btn">Clear filters</button>
+            <button type="button" class="cuisines-apply-btn" id="cuisines-apply-btn">Show 0 results</button>
+          </div>
+        </div>
+        </div>
+
+        <div class="results-meta">
+          <p class="results-count" id="results-count">Showing results 1–50 of 0</p>
+          <div class="pagination-nav">
+            <button class="page-btn page-btn-prev" id="page-prev" type="button" aria-label="Previous page" disabled>
+              <img src="assets/icon-chevron-nav.svg" alt="" aria-hidden="true">
+            </button>
+            <button class="page-btn page-btn-next" id="page-next" type="button" aria-label="Next page" disabled>
+              <img src="assets/icon-chevron-nav.svg" alt="" aria-hidden="true">
+            </button>
+          </div>
+        </div>
+
+        <div class="card-list" id="card-list"></div>
+      </div>
+
+      </div>
+
+      <div class="left-detail-view" id="left-detail-view" aria-hidden="true">
+        <div class="left-detail-topbar">
+          <button type="button" class="left-detail-close" id="left-detail-close" aria-label="Close restaurant detail">
+            <img class="left-detail-close-icon" src="assets/XIcon.svg" alt="" aria-hidden="true">
+          </button>
+          <nav class="left-detail-nav" id="left-detail-nav" aria-label="Browse restaurants in results">
+            <button type="button" class="left-detail-nav-country" id="left-detail-prev-country" disabled></button>
+            <button type="button" class="left-detail-nav-btn" id="left-detail-prev-btn" aria-label="Previous restaurant" disabled>
+              <img class="left-detail-nav-chevron left-detail-nav-chevron-prev" src="assets/icon-chevron-nav.svg" alt="" aria-hidden="true">
+            </button>
+            <button type="button" class="left-detail-nav-btn" id="left-detail-next-btn" aria-label="Next restaurant" disabled>
+              <img class="left-detail-nav-chevron" src="assets/icon-chevron-nav.svg" alt="" aria-hidden="true">
+            </button>
+            <button type="button" class="left-detail-nav-country" id="left-detail-next-country" disabled></button>
+          </nav>
+        </div>
+        <img class="left-detail-hero" id="left-detail-hero" src="" alt="" loading="lazy">
+        <div class="left-detail-content">
+          <div class="left-detail-intro">
+            <div class="left-detail-pills">
+              <span class="peek-country-pill" id="left-detail-country"></span>
+              <span class="peek-tag" id="left-detail-tag"></span>
+            </div>
+            <div class="left-detail-title-block">
+              <div class="left-detail-title-row">
+                <h2 class="left-detail-name" id="left-detail-name"></h2>
+                <img class="peek-bookmark" src="assets/icon-bookmark.svg" alt="" aria-hidden="true">
+              </div>
+              <p class="peek-meta">
+                <img class="peek-meta-icon" src="assets/icon-map.svg" alt="" aria-hidden="true">
+                <span id="left-detail-address"></span>
+              </p>
+              <p class="peek-rating">
+                <img class="peek-rating-icon" src="assets/icon-star.svg" alt="" aria-hidden="true">
+                <span id="left-detail-rating"></span>
+              </p>
+            </div>
+          </div>
+
+          <div class="left-detail-sections">
+            <div class="left-detail-fact-card">
+              <div class="left-detail-fact-inner">
+                <div class="left-detail-fact-photo-wrap">
+                  <img class="left-detail-fact-photo" id="left-detail-fact-photo" src="assets/fun-fact-thumb.png" alt="" loading="lazy">
+                </div>
+                <div class="left-detail-fact-body">
+                  <div class="left-detail-fact-header">
+                    <p class="left-detail-section-label" id="left-detail-fact-label">fun fact #1</p>
+                    <div class="left-detail-fact-nav">
+                      <button type="button" class="left-detail-fact-nav-btn" id="left-detail-fact-prev" aria-label="Previous fun fact" disabled>
+                        <img class="left-detail-fact-chevron left-detail-fact-chevron-prev" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+                      </button>
+                      <button type="button" class="left-detail-fact-nav-btn" id="left-detail-fact-next" aria-label="Next fun fact">
+                        <img class="left-detail-fact-chevron left-detail-fact-chevron-next" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+                      </button>
+                    </div>
+                  </div>
+                  <p class="left-detail-body-text" id="left-detail-fun-fact"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="left-detail-section">
+              <p class="left-detail-section-label">Speciality dishes</p>
+              <img class="left-detail-help-icon" src="assets/icon-question.svg" alt="" aria-hidden="true">
+              <ul class="left-detail-dishes" id="left-detail-dishes"></ul>
+            </div>
+
+            <div class="left-detail-section">
+              <p class="left-detail-section-label">Review</p>
+              <p class="left-detail-body-text left-detail-review-text" id="left-detail-review"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── Map panel ────────────────────────────────────────────────────────── -->
+    <main class="panel-map" id="panel-map">
+      <svg class="bay-area-map" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg"
+        preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <image id="mobile-map-image" href="assets/figma-map.png" x="-80" y="0" width="960" height="600" preserveAspectRatio="xMidYMid slice"/>
+        <g class="map-dots" id="map-dots"></g>
+      </svg>
+    </main>
+
+  </div>
+
+  <!-- ── Mobile bottom sheet ──────────────────────────────────────────────── -->
+  <div class="mobile-bottom-sheet" id="mobile-bottom-sheet">
+
+    <!-- Browse mode: search + tabs + cards -->
+    <div class="mobile-browse-content">
+      <div class="search-pill mobile-search-pill" id="mobile-search-pill">
+        <div class="search-left">
+          <img class="search-icon" src="assets/icon-search.svg" alt="" aria-hidden="true">
+          <input class="search-input" id="mobile-search-input" type="text"
+            placeholder="Search"
+            aria-label="Search by restaurant, country, or address" autocomplete="off">
+        </div>
+        <button type="button" class="mobile-search-clear" id="mobile-search-clear" aria-label="Clear search">
+          <img src="assets/XIcon.svg" alt="" aria-hidden="true">
+        </button>
+        <button class="mobile-filters-btn" id="mobile-filter-btn" type="button" aria-label="Open filters">
+          <img src="assets/icon-filter.svg" alt="" aria-hidden="true">
+          <span class="mobile-filters-label">Filters</span>
+        </button>
+      </div>
+      <div class="mobile-editorial-section">
+        <p class="mobile-section-label" id="mobile-section-label">Editorial picks</p>
+        <div class="mobile-peek-row" id="mobile-peek-row"></div>
+      </div>
+    </div>
+
+    <!-- Dot-selected mode: single restaurant card -->
+    <div class="mobile-dot-content" id="mobile-dot-content">
+      <div class="mobile-drag-handle"></div>
+      <img class="mobile-dot-photo" id="mobile-dot-photo" alt="" loading="lazy">
+      <div class="peek-card-top">
+        <span class="peek-country-pill" id="mobile-dot-country"></span>
+        <span class="peek-tag" id="mobile-dot-tag"></span>
+      </div>
+      <p class="peek-name" id="mobile-dot-name"></p>
+      <p class="peek-meta" id="mobile-dot-address"></p>
+      <p class="peek-rating" id="mobile-dot-rating"></p>
+      <button class="peek-cta" id="mobile-dot-read-more">Read more</button>
+    </div>
+
+  </div>
+
+  <!-- ── Mobile filter modal ──────────────────────────────────────────────── -->
+  <div class="mobile-filter-modal" id="mobile-filter-modal" aria-hidden="true">
+    <div class="mobile-filter-scroll">
+      <button type="button" class="mobile-filter-back" id="mobile-filter-back">
+        <img class="mobile-filter-back-chevron" src="assets/icon-chevron-nav.svg" alt="" aria-hidden="true">
+        Filters
+      </button>
+      <div class="mobile-filter-rating rating-popover">
+        <div class="mobile-filter-label-row">
+          <span class="mobile-filter-section-title">Rating</span>
+          <span class="rating-display" id="mobile-filter-rating-display">★  4.0 +</span>
+        </div>
+        <input type="range" id="mobile-filter-rating-slider" min="4" max="5" step="0.1" value="4"
+          aria-label="Minimum rating filter" aria-valuetext="4.0 stars and above">
+      </div>
+      <div class="mobile-filter-cuisines">
+        <span class="mobile-filter-section-title">Cuisines</span>
+        <div class="cuisine-genre-list" id="mobile-cuisines-genre-list" role="group" aria-label="Filter by cuisine"></div>
+      </div>
+    </div>
+    <div class="mobile-filter-footer">
+      <hr class="mobile-filter-divider">
+      <div class="mobile-filter-footer-actions">
+        <button type="button" class="mobile-filter-clear-btn" id="mobile-filter-clear-btn">Clear filters</button>
+        <button type="button" class="mobile-filter-apply-btn" id="mobile-filter-apply-btn">Show 0 results</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Mobile detail modal (Figma 127-1256) ─────────────────────────────── -->
+  <div class="mobile-detail-modal" id="mobile-detail-modal" aria-hidden="true">
+    <div class="mobile-detail-scrim" aria-hidden="true"></div>
+    <div class="mobile-detail-panel" id="mobile-detail-panel">
+      <button type="button" class="mobile-detail-close" id="mobile-detail-close" aria-label="Close restaurant detail">
+        <img class="mobile-detail-close-icon" src="assets/XIcon.svg" alt="" aria-hidden="true">
+      </button>
+      <img class="mobile-detail-hero" id="mobile-detail-hero" src="" alt="" loading="lazy">
+      <div class="mobile-detail-content">
+        <div class="left-detail-intro">
+          <div class="left-detail-pills">
+            <span class="peek-country-pill" id="mobile-detail-country"></span>
+            <span class="peek-tag" id="mobile-detail-tag"></span>
+          </div>
+          <div class="left-detail-title-block">
+            <div class="left-detail-title-row">
+              <h2 class="left-detail-name" id="mobile-detail-name"></h2>
+              <img class="peek-bookmark" src="assets/icon-bookmark.svg" alt="" aria-hidden="true">
+            </div>
+            <p class="peek-meta">
+              <img class="peek-meta-icon" src="assets/icon-map.svg" alt="" aria-hidden="true">
+              <span id="mobile-detail-address"></span>
+            </p>
+            <p class="peek-rating">
+              <img class="peek-rating-icon" src="assets/icon-star.svg" alt="" aria-hidden="true">
+              <span id="mobile-detail-rating"></span>
+            </p>
+          </div>
+        </div>
+        <div class="left-detail-sections">
+          <div class="left-detail-fact-card">
+            <div class="left-detail-fact-inner">
+              <div class="left-detail-fact-photo-wrap">
+                <img class="left-detail-fact-photo" id="mobile-detail-fact-photo" src="assets/fun-fact-thumb.png" alt="" loading="lazy">
+              </div>
+              <div class="left-detail-fact-body">
+                <div class="left-detail-fact-header">
+                  <p class="left-detail-section-label" id="mobile-detail-fact-label">fun fact 1<span class="detail-fact-total">/1</span></p>
+                  <div class="left-detail-fact-nav">
+                    <button type="button" class="left-detail-fact-nav-btn" id="mobile-detail-fact-prev" aria-label="Previous fun fact" disabled>
+                      <img class="left-detail-fact-chevron left-detail-fact-chevron-prev" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+                    </button>
+                    <button type="button" class="left-detail-fact-nav-btn" id="mobile-detail-fact-next" aria-label="Next fun fact">
+                      <img class="left-detail-fact-chevron left-detail-fact-chevron-next" src="assets/icon-chevron-down.svg" alt="" aria-hidden="true">
+                    </button>
+                  </div>
+                </div>
+                <p class="left-detail-body-text" id="mobile-detail-fun-fact"></p>
+              </div>
+            </div>
+          </div>
+          <div class="left-detail-section">
+            <p class="left-detail-section-label">Speciality dishes</p>
+            <img class="left-detail-help-icon" src="assets/icon-question.svg" alt="" aria-hidden="true">
+            <ul class="left-detail-dishes" id="mobile-detail-dishes"></ul>
+          </div>
+          <div class="left-detail-section">
+            <p class="left-detail-section-label">Review</p>
+            <p class="left-detail-body-text left-detail-review-text" id="mobile-detail-review"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right detail panel ───────────────────────────────────────────────── -->
+  <aside class="panel-right" id="panel-right" aria-label="Restaurant detail">
+    <div class="panel-hero">
+      <div class="panel-hero-bg" id="detail-hero-bg"></div>
+      <img class="panel-hero-photo" id="detail-photo" src="" alt="" loading="lazy">
+      <button class="panel-close" id="panel-close" aria-label="Close detail panel">×</button>
+    </div>
+    <div class="panel-content">
+      <div class="panel-header-row">
+        <span class="peek-country-pill" id="detail-country"></span>
+        <span class="peek-tag" id="detail-tag"></span>
+      </div>
+      <h2 class="panel-name" id="detail-name"></h2>
+      <p class="panel-address"><span aria-hidden="true">◎</span> <span id="detail-address"></span></p>
+      <p class="panel-rating"><span aria-hidden="true">★</span> <span id="detail-rating"></span></p>
+      <hr class="panel-divider-thin">
+      <div class="panel-sections">
+        <div class="panel-section">
+          <span class="panel-section-label">Speciality dishes</span>
+          <ul class="panel-dishes" id="detail-dishes"></ul>
+        </div>
+        <div class="panel-section">
+          <span class="panel-section-label">Fun fact</span>
+          <p class="panel-body-text" id="detail-fun-fact"></p>
+        </div>
+        <div class="panel-section">
+          <span class="panel-section-label">Review</span>
+          <p class="panel-body-text" id="detail-review"></p>
+        </div>
+      </div>
+      <p class="panel-scroll-hint"><span aria-hidden="true">↓</span> Scroll down for the next restaurant</p>
+    </div>
+  </aside>
+
+  <script>
+    // ── Genre colors ──────────────────────────────────────────────────────────
+    const genreColors = {
+      'East Asian':              '#C9845A',
+      'Southeast Asian':         '#7BA05B',
+      'South Asian':             '#E8A838',
+      'Central & West Asian':    '#9B6B9B',
+      'Middle Eastern':          '#D4956A',
+      'North African':           '#C4863C',
+      'West & Central African':  '#6B8E6B',
+      'East & Southern African': '#8B6B4A',
+      'Latin American':          '#D46B6B',
+      'European':                '#6B8BAE',
+      'Oceania':                 '#5BA0A0',
+    };
+
+    // ── CSV parser ────────────────────────────────────────────────────────────
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = splitCSVLine(lines[0]);
+      return lines.slice(1).map(function (line) {
+        const values = splitCSVLine(line);
+        const row = {};
+        headers.forEach(function (h, i) { row[h.trim()] = values[i] !== undefined ? values[i].trim() : ''; });
+        return {
+          id:         row.id,
+          name:       row.name,
+          country:    row.country,
+          flag:       row.flag,
+          continent:  row.continent,
+          genre:      row.genre,
+          tag:        row.tag,
+          rating:     parseFloat(row.rating),
+          address:    row.address,
+          coords:     { x: parseFloat(row.coord_x), y: parseFloat(row.coord_y) },
+          photo:      row.photo,
+          dishes:     [row.dish1, row.dish2, row.dish3].filter(Boolean),
+          funFact:    row.funFact,
+          reviewText: row.reviewText,
+        };
+      });
+    }
+
+    function splitCSVLine(line) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+          else { inQuotes = !inQuotes; }
+        } else if (ch === ',' && !inQuotes) {
+          result.push(current); current = '';
+        } else {
+          current += ch;
+        }
+      }
+      result.push(current);
+      return result;
+    }
+
+    // ── Restaurant data loaded from restaurants.csv ───────────────────────────
+    fetch('restaurants.csv')
+      .then(function (r) { return r.text(); })
+      .then(function (text) { startApp(parseCSV(text)); });
+
+    function startApp(restaurants) {
+
+    const CONTINENTS = ['Asia', 'Europe', 'America', 'Africa', 'Oceania'];
+    const GENRE_ORDER = [
+      'European', 'East Asian', 'Southeast Asian', 'South Asian',
+      'Central & West Asian', 'Middle Eastern', 'North African',
+      'West & Central African', 'East & Southern African', 'Oceania', 'Latin American',
+    ];
+
+    const cuisineByGenre = {};
+    for (const restaurant of restaurants) {
+      if (!cuisineByGenre[restaurant.genre]) cuisineByGenre[restaurant.genre] = new Map();
+      if (!cuisineByGenre[restaurant.genre].has(restaurant.country)) {
+        cuisineByGenre[restaurant.genre].set(restaurant.country, {
+          flag: restaurant.flag,
+          country: restaurant.country,
+        });
+      }
+    }
+
+    let draftCountries = new Set();
+
+    const PAGE_SIZE = 50;
+    const RATING_MIN = 4;
+    let draftMinRating = RATING_MIN;
+
+    // ── Application state ─────────────────────────────────────────────────────
+    const appState = {
+      minRating:       RATING_MIN,
+      activeContinent: 'Asia',
+      activeCountries: new Set(),
+      hoveredId:       null,
+      selectedId:      null,
+      sortBy:          'rating-desc',
+      currentPage:     1,
+    };
+
+    // ── Cached DOM refs ───────────────────────────────────────────────────────
+    const dotLayer      = document.getElementById('map-dots');
+    const cardList      = document.getElementById('card-list');
+    const mobilePeekRow = document.getElementById('mobile-peek-row');
+    const resultsCount  = document.getElementById('results-count');
+    const pagePrev      = document.getElementById('page-prev');
+    const pageNext      = document.getElementById('page-next');
+
+    const DOT_RADIUS     = 6;
+    const HOVER_DELAY_MS = 80;
+
+    // ── Render continent tabs into a container ────────────────────────────────
+    function renderContinentTabs(containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      for (const continent of CONTINENTS) {
+        const btn = document.createElement('button');
+        btn.className = 'continent-tab' + (continent === appState.activeContinent ? ' active' : '');
+        btn.textContent = continent.toUpperCase();
+        btn.dataset.continent = continent;
+        btn.dataset.target = containerId;
+        btn.setAttribute('aria-pressed', String(continent === appState.activeContinent));
+        container.appendChild(btn);
+      }
+    }
+
+    // ── Render country pills into a container ─────────────────────────────────
+    function renderCountryPills(containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      const seen = new Set();
+      for (const restaurant of restaurants) {
+        if (restaurant.continent !== appState.activeContinent) continue;
+        if (seen.has(restaurant.country)) continue;
+        seen.add(restaurant.country);
+        const btn = document.createElement('button');
+        btn.className = 'country-pill';
+        btn.dataset.country = restaurant.country;
+        btn.setAttribute('aria-pressed', String(appState.activeCountries.has(restaurant.country)));
+        btn.textContent = restaurant.flag + ' ' + restaurant.country;
+        container.appendChild(btn);
+      }
+    }
+
+    function getContinentCountries() {
+      const countries = new Set();
+      for (const restaurant of restaurants) {
+        if (restaurant.continent === appState.activeContinent) countries.add(restaurant.country);
+      }
+      return countries;
+    }
+
+    function syncToggleLabels() {
+      /* legacy — mobile filter uses modal draft state */
+    }
+
+    // ── Cuisines popover ──────────────────────────────────────────────────────
+    const filterCuisinesLabel = document.getElementById('filter-cuisines-label');
+    const filterSortLabel     = document.getElementById('filter-sort-label');
+    const cuisinesApplyBtn    = document.getElementById('cuisines-apply-btn');
+
+    function passesCountryFilter(countries, country) {
+      return countries.size === 0 || countries.has(country);
+    }
+
+    function countForCountries(countries) {
+      return restaurants.filter(function (r) {
+        return r.rating >= appState.minRating &&
+          passesCountryFilter(countries, r.country) &&
+          (searchQuery === '' ||
+            r.name.toLowerCase().includes(searchQuery) ||
+            r.country.toLowerCase().includes(searchQuery) ||
+            r.address.toLowerCase().includes(searchQuery));
+      }).length;
+    }
+
+    function formatResultCount(count) {
+      return 'Show ' + count + ' result' + (count === 1 ? '' : 's');
+    }
+
+    function updateCuisinesCta() {
+      cuisinesApplyBtn.textContent = formatResultCount(countForCountries(draftCountries));
+    }
+
+    function updateSortButtonLabel() {
+      filterSortLabel.textContent = appState.sortBy === 'name-asc'
+        ? 'Sort (A–Z)'
+        : 'Sort (rating)';
+    }
+
+    function syncSortOptions() {
+      for (const btn of document.querySelectorAll('.sort-option')) {
+        btn.setAttribute('aria-pressed', String(btn.dataset.sort === appState.sortBy));
+      }
+    }
+
+    function updateCuisinesButtonLabel() {
+      const isOpen = filterPanels.cuisines.classList.contains('open');
+      const selected = appState.activeCountries.size;
+      if (isOpen) {
+        filterCuisinesLabel.textContent = 'Cuisines';
+      } else if (selected === 0) {
+        filterCuisinesLabel.textContent = 'Cuisines';
+      } else {
+        filterCuisinesLabel.textContent = 'Cuisines (' + selected + ')';
+      }
+    }
+
+    function renderCuisinesList(containerId, countriesSet) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      for (const genre of GENRE_ORDER) {
+        const countries = cuisineByGenre[genre];
+        const row = document.createElement('div');
+        row.className = 'cuisine-genre-row';
+
+        const label = document.createElement('p');
+        label.className = 'cuisine-genre-label';
+        label.textContent = genre;
+        row.appendChild(label);
+
+        if (countries && countries.size > 0) {
+          const pillsWrap = document.createElement('div');
+          pillsWrap.className = 'cuisine-genre-pills';
+          for (const data of countries.values()) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'cuisine-pill';
+            btn.dataset.country = data.country;
+            btn.setAttribute('aria-pressed', String(countriesSet.has(data.country)));
+            btn.textContent = data.flag + ' ' + data.country;
+            pillsWrap.appendChild(btn);
+          }
+          row.appendChild(pillsWrap);
+        }
+        container.appendChild(row);
+      }
+    }
+
+    function renderCuisinesPopover() {
+      renderCuisinesList('cuisines-genre-list', draftCountries);
+    }
+
+    function renderMobileFilterCuisines() {
+      renderCuisinesList('mobile-cuisines-genre-list', draftCountries);
+    }
+
+    function applyCuisinesDraft() {
+      appState.activeCountries = new Set(draftCountries);
+      appState.currentPage = 1;
+      render();
+      updateCuisinesButtonLabel();
+    }
+
+    function countForDraftFilters(minRating, countries) {
+      return restaurants.filter(function (r) {
+        return r.rating >= minRating &&
+          passesCountryFilter(countries, r.country) &&
+          (searchQuery === '' ||
+            r.name.toLowerCase().includes(searchQuery) ||
+            r.country.toLowerCase().includes(searchQuery) ||
+            r.address.toLowerCase().includes(searchQuery));
+      }).length;
+    }
+
+    function openCuisinesPopover() {
+      draftCountries = new Set(appState.activeCountries);
+      renderCuisinesPopover();
+      updateCuisinesCta();
+      updateCuisinesButtonLabel();
+    }
+
+    // ── Rating display (shared between desktop + mobile) ──────────────────────
+    const filterRatingLabel = document.getElementById('filter-rating-label');
+
+    function updateRatingButtonLabel() {
+      const isOpen = filterPanels.rating.classList.contains('open');
+      if (isOpen) {
+        filterRatingLabel.textContent = 'Rating';
+      } else {
+        filterRatingLabel.textContent = 'Rating (★' + appState.minRating.toFixed(1) + '+)';
+      }
+    }
+
+    function updateRatingSliderFill(value) {
+      const pct = ((value - RATING_MIN) / (5 - RATING_MIN)) * 100 + '%';
+      document.getElementById('rating-slider').style.setProperty('--rating-fill', pct);
+      const mobileSlider = document.getElementById('mobile-filter-rating-slider');
+      if (mobileSlider) mobileSlider.style.setProperty('--rating-fill', pct);
+    }
+
+    function updateRatingDisplay(value) {
+      const displayText = '★  ' + value.toFixed(1) + ' +';
+      const ariaText = value.toFixed(1) + ' stars and above';
+      document.getElementById('rating-display').textContent = displayText;
+      document.getElementById('rating-slider').setAttribute('aria-valuetext', ariaText);
+      updateRatingSliderFill(value);
+      updateRatingButtonLabel();
+    }
+
+    function updateMobileFilterRatingDisplay(value) {
+      const displayText = '★  ' + value.toFixed(1) + ' +';
+      const ariaText = value.toFixed(1) + ' stars and above';
+      const displayEl = document.getElementById('mobile-filter-rating-display');
+      const sliderEl = document.getElementById('mobile-filter-rating-slider');
+      if (displayEl) displayEl.textContent = displayText;
+      if (sliderEl) sliderEl.setAttribute('aria-valuetext', ariaText);
+      updateRatingSliderFill(value);
+    }
+
+    // ── Sync both sliders to the same value ───────────────────────────────────
+    function syncSliders(value) {
+      document.getElementById('rating-slider').value = value;
+      const mobileSlider = document.getElementById('mobile-filter-rating-slider');
+      if (mobileSlider) mobileSlider.value = value;
+      updateRatingSliderFill(value);
+    }
+
+    // ── Visible restaurants ───────────────────────────────────────────────────
+    function getVisibleRestaurants() {
+      const filtered = restaurants.filter(r =>
+        r.rating >= appState.minRating &&
+        passesCountryFilter(appState.activeCountries, r.country) &&
+        (searchQuery === '' ||
+          r.name.toLowerCase().includes(searchQuery) ||
+          r.country.toLowerCase().includes(searchQuery) ||
+          r.address.toLowerCase().includes(searchQuery))
+      );
+
+      const sorted = filtered.slice();
+      if (appState.sortBy === 'rating-desc') {
+        sorted.sort(function (a, b) { return b.rating - a.rating; });
+      } else if (appState.sortBy === 'rating-asc') {
+        sorted.sort(function (a, b) { return a.rating - b.rating; });
+      } else if (appState.sortBy === 'name-asc') {
+        sorted.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      }
+      return sorted;
+    }
+
+    function getPagedRestaurants(visible) {
+      const total = visible.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      if (appState.currentPage > totalPages) appState.currentPage = totalPages;
+      const start = (appState.currentPage - 1) * PAGE_SIZE;
+      const end = Math.min(start + PAGE_SIZE, total);
+      return { pageItems: visible.slice(start, end), total, start, end, totalPages };
+    }
+
+    function updateResultsMeta(visible) {
+      const { total, start, end, totalPages } = getPagedRestaurants(visible);
+      const from = total === 0 ? 0 : start + 1;
+      const to = end;
+      resultsCount.textContent = 'Showing results ' + from + '–' + to + ' of ' + total;
+      pagePrev.disabled = appState.currentPage <= 1;
+      pageNext.disabled = appState.currentPage >= totalPages;
+    }
+
+    // ── Dots ──────────────────────────────────────────────────────────────────
+    function initDots() {
+      for (const restaurant of restaurants) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', restaurant.coords.x);
+        circle.setAttribute('cy', restaurant.coords.y);
+        circle.setAttribute('r', String(DOT_RADIUS));
+        circle.setAttribute('fill', genreColors[restaurant.genre]);
+        circle.setAttribute('data-id', restaurant.id);
+        circle.setAttribute('tabindex', '0');
+        circle.setAttribute('role', 'button');
+        circle.setAttribute('aria-label', `${restaurant.name} — ${restaurant.country}`);
+        circle.classList.add('restaurant-dot');
+        dotLayer.appendChild(circle);
+      }
+    }
+
+    function renderDots(visible) {
+      const visibleIds = new Set(visible.map(r => r.id));
+      for (const dot of dotLayer.querySelectorAll('.restaurant-dot')) {
+        dot.style.visibility = visibleIds.has(dot.dataset.id) ? '' : 'hidden';
+        if (!visibleIds.has(dot.dataset.id)) {
+          dot.classList.remove('highlighted');
+          dot.classList.remove('selected');
+        } else if (dot.dataset.id !== appState.selectedId) {
+          dot.classList.remove('selected');
+        }
+      }
+      if (appState.selectedId) setSelectedDot(appState.selectedId);
+    }
+
+    // ── Restaurant cards ──────────────────────────────────────────────────────
+    function buildPeekCard(restaurant, layout) {
+      const card = document.createElement('div');
+      card.className = 'peek-card';
+      card.dataset.id = restaurant.id;
+      if (restaurant.id === appState.hoveredId) card.classList.add('highlighted');
+
+      if (layout === 'horizontal') {
+        const body = document.createElement('div');
+        body.className = 'peek-card-body';
+
+        const photo = document.createElement('img');
+        photo.className = 'peek-card-photo';
+        photo.src = restaurant.photo + '?w=400&q=80';
+        photo.alt = restaurant.name;
+        photo.loading = 'lazy';
+
+        const content = document.createElement('div');
+        content.className = 'peek-card-content';
+
+        const top = document.createElement('div');
+        top.className = 'peek-card-top';
+
+        const countryPill = document.createElement('span');
+        countryPill.className = 'peek-country-pill';
+        countryPill.textContent = restaurant.flag + ' ' + restaurant.country;
+
+        const tag = document.createElement('span');
+        tag.className = 'peek-tag';
+        tag.textContent = restaurant.tag;
+
+        top.appendChild(countryPill);
+        top.appendChild(tag);
+
+        const bottom = document.createElement('div');
+        bottom.className = 'peek-card-bottom';
+
+        const info = document.createElement('div');
+        info.className = 'peek-card-info';
+
+        const name = document.createElement('p');
+        name.className = 'peek-name';
+        name.textContent = restaurant.name;
+
+        const address = document.createElement('p');
+        address.className = 'peek-meta';
+        const mapIcon = document.createElement('img');
+        mapIcon.className = 'peek-meta-icon';
+        mapIcon.src = 'assets/icon-map.svg';
+        mapIcon.alt = '';
+        mapIcon.setAttribute('aria-hidden', 'true');
+        address.appendChild(mapIcon);
+        address.appendChild(document.createTextNode(restaurant.address));
+
+        const rating = document.createElement('p');
+        rating.className = 'peek-rating';
+        const starIcon = document.createElement('img');
+        starIcon.className = 'peek-rating-icon';
+        starIcon.src = 'assets/icon-star.svg';
+        starIcon.alt = '';
+        starIcon.setAttribute('aria-hidden', 'true');
+        rating.appendChild(starIcon);
+        rating.appendChild(document.createTextNode(restaurant.rating.toFixed(1)));
+
+        info.appendChild(name);
+        info.appendChild(address);
+        info.appendChild(rating);
+
+        const bookmark = document.createElement('img');
+        bookmark.className = 'peek-bookmark';
+        bookmark.src = 'assets/icon-bookmark.svg';
+        bookmark.alt = '';
+        bookmark.setAttribute('aria-hidden', 'true');
+
+        bottom.appendChild(info);
+        bottom.appendChild(bookmark);
+
+        content.appendChild(top);
+        content.appendChild(bottom);
+        body.appendChild(photo);
+        body.appendChild(content);
+        card.appendChild(body);
+        return card;
+      }
+
+      if (layout === 'mobile') {
+        card.className = 'mobile-peek-card';
+        card.dataset.id = restaurant.id;
+
+        const photo = document.createElement('img');
+        photo.className = 'mobile-peek-photo';
+        photo.src = restaurant.photo + '?w=400&q=80';
+        photo.alt = restaurant.name;
+        photo.loading = 'lazy';
+
+        const content = document.createElement('div');
+        content.className = 'mobile-peek-content';
+
+        const top = document.createElement('div');
+        top.className = 'mobile-peek-top';
+
+        const countryPill = document.createElement('span');
+        countryPill.className = 'mobile-peek-country-pill';
+        countryPill.textContent = restaurant.flag + ' ' + restaurant.country;
+
+        const tag = document.createElement('span');
+        tag.className = 'mobile-peek-tag';
+        tag.textContent = restaurant.tag;
+
+        top.appendChild(countryPill);
+        top.appendChild(tag);
+
+        const info = document.createElement('div');
+        info.className = 'mobile-peek-info';
+
+        const name = document.createElement('p');
+        name.className = 'mobile-peek-name';
+        name.textContent = restaurant.name;
+
+        const address = document.createElement('p');
+        address.className = 'mobile-peek-meta';
+        const mapIcon = document.createElement('img');
+        mapIcon.className = 'mobile-peek-meta-icon';
+        mapIcon.src = 'assets/icon-map.svg';
+        mapIcon.alt = '';
+        mapIcon.setAttribute('aria-hidden', 'true');
+        address.appendChild(mapIcon);
+        address.appendChild(document.createTextNode(restaurant.address));
+
+        const rating = document.createElement('p');
+        rating.className = 'mobile-peek-rating';
+        const starIcon = document.createElement('img');
+        starIcon.className = 'mobile-peek-rating-icon';
+        starIcon.src = 'assets/icon-star.svg';
+        starIcon.alt = '';
+        starIcon.setAttribute('aria-hidden', 'true');
+        rating.appendChild(starIcon);
+        rating.appendChild(document.createTextNode(restaurant.rating.toFixed(1)));
+
+        info.appendChild(name);
+        info.appendChild(address);
+        info.appendChild(rating);
+
+        content.appendChild(top);
+        content.appendChild(info);
+        card.appendChild(photo);
+        card.appendChild(content);
+        return card;
+      }
+
+      return card;
+    }
+
+    function renderPeekCards(visible) {
+      const { pageItems } = getPagedRestaurants(visible);
+      cardList.innerHTML = '';
+      mobilePeekRow.innerHTML = '';
+      for (const restaurant of pageItems) {
+        cardList.appendChild(buildPeekCard(restaurant, 'horizontal'));
+      }
+      for (const restaurant of visible) {
+        mobilePeekRow.appendChild(buildPeekCard(restaurant, 'mobile'));
+      }
+      updateResultsMeta(visible);
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function render() {
+      const visible = getVisibleRestaurants();
+      renderDots(visible);
+      renderPeekCards(visible);
+    }
+
+    // ── Highlight card on dot hover ───────────────────────────────────────────
+    function highlightPeekCard(id) {
+      for (const row of [cardList, mobilePeekRow]) {
+        if (!row) continue;
+        for (const card of row.querySelectorAll('.peek-card, .mobile-peek-card')) {
+          if (card.dataset.id === id) {
+            card.classList.add('highlighted');
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          } else {
+            card.classList.remove('highlighted');
+          }
+        }
+      }
+    }
+
+    function clearPeekHighlight() {
+      for (const row of [cardList, mobilePeekRow]) {
+        if (!row) continue;
+        for (const card of row.querySelectorAll('.peek-card, .mobile-peek-card')) {
+          card.classList.remove('highlighted');
+        }
+      }
+    }
+
+    // ── Dot interactions ──────────────────────────────────────────────────────
+    let hoverShowTimer = null;
+    let hoverHideTimer = null;
+
+    dotLayer.addEventListener('mouseover', function (e) {
+      const dot = e.target.closest('.restaurant-dot');
+      if (!dot) return;
+      const id = dot.dataset.id;
+      if (appState.hoveredId === id) return;
+      clearTimeout(hoverHideTimer);
+      clearTimeout(hoverShowTimer);
+      hoverShowTimer = setTimeout(() => {
+        appState.hoveredId = id;
+        highlightPeekCard(id);
+        dot.classList.add('highlighted');
+      }, HOVER_DELAY_MS);
+    });
+
+    dotLayer.addEventListener('mouseout', function (e) {
+      const dot = e.target.closest('.restaurant-dot');
+      if (!dot) return;
+      clearTimeout(hoverShowTimer);
+      hoverHideTimer = setTimeout(() => {
+        appState.hoveredId = null;
+        if (dot.dataset.id !== appState.selectedId) dot.classList.remove('highlighted');
+        clearPeekHighlight();
+      }, HOVER_DELAY_MS);
+    });
+
+    dotLayer.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const dot = e.target.closest('.restaurant-dot');
+      if (!dot) return;
+      e.preventDefault();
+      openPanel(dot.dataset.id);
+    });
+
+    dotLayer.addEventListener('click', function (e) {
+      const dot = e.target.closest('.restaurant-dot');
+      if (!dot) return;
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        openMobileDotSheet(dot.dataset.id);
+      } else {
+        openPanel(dot.dataset.id);
+      }
+    });
+
+    // Card clicks open detail panel
+    function attachDragScroll(rowEl) {
+      if (!rowEl) return;
+      let dragStartX = 0;
+      let scrollStart = 0;
+      let isDragging = false;
+      let activePointerId = null;
+      const DRAG_THRESHOLD_PX = 6;
+
+      rowEl.addEventListener('pointerdown', function (e) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        isDragging = false;
+        activePointerId = e.pointerId;
+        dragStartX = e.clientX;
+        scrollStart = rowEl.scrollLeft;
+      });
+
+      rowEl.addEventListener('pointermove', function (e) {
+        if (activePointerId === null || e.pointerId !== activePointerId) return;
+        const deltaX = e.clientX - dragStartX;
+        if (!isDragging && Math.abs(deltaX) > DRAG_THRESHOLD_PX) {
+          isDragging = true;
+          rowEl.classList.add('is-dragging');
+          rowEl.setPointerCapture(e.pointerId);
+        }
+        if (!isDragging) return;
+        e.preventDefault();
+        rowEl.scrollLeft = scrollStart - deltaX;
+      });
+
+      function endDrag(e) {
+        if (activePointerId === null || e.pointerId !== activePointerId) return;
+        rowEl.classList.remove('is-dragging');
+        if (rowEl.hasPointerCapture(e.pointerId)) {
+          rowEl.releasePointerCapture(e.pointerId);
+        }
+        if (isDragging) {
+          rowEl.dataset.suppressClick = 'true';
+        }
+        isDragging = false;
+        activePointerId = null;
+      }
+
+      rowEl.addEventListener('pointerup', endDrag);
+      rowEl.addEventListener('pointercancel', endDrag);
+    }
+
+    function attachPeekRowListener(rowEl) {
+      if (!rowEl) return;
+      rowEl.addEventListener('click', function (e) {
+        if (rowEl.dataset.suppressClick === 'true') {
+          delete rowEl.dataset.suppressClick;
+          return;
+        }
+        if (e.target.closest('.peek-bookmark')) return;
+        let card = e.target.closest('.peek-card, .mobile-peek-card');
+        if (!card && e.clientX != null) {
+          const hit = document.elementFromPoint(e.clientX, e.clientY);
+          card = hit && hit.closest('.peek-card, .mobile-peek-card');
+        }
+        if (!card || !card.dataset.id) return;
+        openPanel(card.dataset.id);
+      });
+    }
+    attachPeekRowListener(cardList);
+    attachPeekRowListener(mobilePeekRow);
+    attachDragScroll(mobilePeekRow);
+
+    // ── Continent tab click (legacy desktop panel — unused) ─────────────────
+    function handleContinentTabClick(e, pillsId, tabsId) {
+      const tab = e.target.closest('.continent-tab');
+      if (!tab) return;
+      appState.activeContinent = tab.dataset.continent;
+      renderContinentTabs(tabsId);
+      renderCountryPills(pillsId);
+    }
+
+    document.getElementById('cuisines-genre-list').addEventListener('click', function (e) {
+      const pill = e.target.closest('.cuisine-pill');
+      if (!pill) return;
+      const country = pill.dataset.country;
+      if (draftCountries.has(country)) draftCountries.delete(country);
+      else draftCountries.add(country);
+      renderCuisinesPopover();
+      updateCuisinesCta();
+    });
+
+    document.getElementById('cuisines-clear-btn').addEventListener('click', function () {
+      draftCountries = new Set();
+      renderCuisinesPopover();
+      updateCuisinesCta();
+    });
+
+    document.getElementById('cuisines-apply-btn').addEventListener('click', function () {
+      applyCuisinesDraft();
+      filterPanels.cuisines.classList.remove('open');
+      filterButtons.cuisines.classList.remove('active');
+      filterButtons.cuisines.setAttribute('aria-expanded', 'false');
+      updateCuisinesButtonLabel();
+    });
+
+    // ── Rating slider (handles both) ──────────────────────────────────────────
+    let ratingDebounce = null;
+
+    function handleRatingInput(value) {
+      updateRatingDisplay(value);
+      syncSliders(value);
+      clearTimeout(ratingDebounce);
+      ratingDebounce = setTimeout(() => {
+        appState.minRating = value;
+        appState.currentPage = 1;
+        render();
+        if (filterPanels.cuisines.classList.contains('open')) updateCuisinesCta();
+      }, 16);
+    }
+
+    document.getElementById('rating-slider').addEventListener('input', function () {
+      handleRatingInput(parseFloat(this.value));
+    });
+
+    // ── Mobile filter modal ───────────────────────────────────────────────────
+    const mobileFilterModal   = document.getElementById('mobile-filter-modal');
+    const mobileFilterBtn     = document.getElementById('mobile-filter-btn');
+    const mobileFilterApplyBtn = document.getElementById('mobile-filter-apply-btn');
+
+    function updateMobileFilterCta() {
+      mobileFilterApplyBtn.textContent = formatResultCount(
+        countForDraftFilters(draftMinRating, draftCountries)
+      );
+    }
+
+    function openMobileFilter() {
+      draftCountries = new Set(appState.activeCountries);
+      draftMinRating = appState.minRating;
+      syncSliders(draftMinRating);
+      updateMobileFilterRatingDisplay(draftMinRating);
+      renderMobileFilterCuisines();
+      updateMobileFilterCta();
+      mobileFilterModal.classList.add('open');
+      mobileFilterModal.setAttribute('aria-hidden', 'false');
+      mobileFilterBtn.classList.add('active');
+      document.getElementById('mobile-filter-back').focus();
+    }
+
+    function closeMobileFilter() {
+      mobileFilterModal.classList.remove('open');
+      mobileFilterModal.setAttribute('aria-hidden', 'true');
+      mobileFilterBtn.classList.remove('active');
+      mobileFilterBtn.focus();
+    }
+
+    function applyMobileFilter() {
+      appState.activeCountries = new Set(draftCountries);
+      appState.minRating = draftMinRating;
+      appState.currentPage = 1;
+      syncSliders(appState.minRating);
+      updateRatingDisplay(appState.minRating);
+      render();
+      updateCuisinesButtonLabel();
+      closeMobileFilter();
+    }
+
+    function clearMobileFilterDraft() {
+      draftCountries = new Set();
+      draftMinRating = RATING_MIN;
+      syncSliders(draftMinRating);
+      updateMobileFilterRatingDisplay(draftMinRating);
+      renderMobileFilterCuisines();
+      updateMobileFilterCta();
+    }
+
+    mobileFilterBtn.addEventListener('click', openMobileFilter);
+    document.getElementById('mobile-filter-back').addEventListener('click', closeMobileFilter);
+    document.getElementById('mobile-filter-clear-btn').addEventListener('click', clearMobileFilterDraft);
+    mobileFilterApplyBtn.addEventListener('click', applyMobileFilter);
+
+    document.getElementById('mobile-filter-rating-slider').addEventListener('input', function () {
+      draftMinRating = parseFloat(this.value);
+      updateMobileFilterRatingDisplay(draftMinRating);
+      updateMobileFilterCta();
+    });
+
+    document.getElementById('mobile-cuisines-genre-list').addEventListener('click', function (e) {
+      const pill = e.target.closest('.cuisine-pill');
+      if (!pill) return;
+      const country = pill.dataset.country;
+      if (draftCountries.has(country)) draftCountries.delete(country);
+      else draftCountries.add(country);
+      renderMobileFilterCuisines();
+      updateMobileFilterCta();
+    });
+
+    // ── Search (synced between desktop + mobile inputs) ────────────────────────
+    let searchQuery = '';
+    let searchDebounce = null;
+
+    const desktopSearchPill  = document.getElementById('desktop-search-pill');
+    const desktopSearchInput = document.getElementById('search-input');
+    const searchClearBtn     = document.getElementById('search-clear');
+    const mobileSearchPill   = document.getElementById('mobile-search-pill');
+    const mobileSearchInput  = document.getElementById('mobile-search-input');
+    const mobileSearchClear  = document.getElementById('mobile-search-clear');
+    const mobileSectionLabel = document.getElementById('mobile-section-label');
+
+    function updateSearchUI() {
+      const hasQuery = desktopSearchInput.value.trim().length > 0;
+      desktopSearchPill.classList.toggle('has-query', hasQuery);
+      mobileSearchPill.classList.toggle('has-query', hasQuery);
+      mobileSectionLabel.textContent = hasQuery ? 'Search results' : 'Editorial picks';
+    }
+
+    function handleSearchInput(value) {
+      updateSearchUI();
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        searchQuery = value.trim().toLowerCase();
+        appState.currentPage = 1;
+        render();
+      }, 16);
+    }
+
+    function clearSearch() {
+      desktopSearchInput.value = '';
+      mobileSearchInput.value = '';
+      handleSearchInput('');
+      desktopSearchInput.focus();
+    }
+
+    document.getElementById('search-input').addEventListener('input', function () {
+      mobileSearchInput.value = this.value;
+      handleSearchInput(this.value);
+    });
+    document.getElementById('mobile-search-input').addEventListener('input', function () {
+      desktopSearchInput.value = this.value;
+      handleSearchInput(this.value);
+    });
+    searchClearBtn.addEventListener('click', clearSearch);
+    mobileSearchClear.addEventListener('click', function () {
+      clearSearch();
+      mobileSearchInput.focus();
+    });
+
+    // ── Surprise me ───────────────────────────────────────────────────────────
+    function surpriseMe() {
+      const visible = getVisibleRestaurants();
+      if (visible.length === 0) return;
+      const pick = visible[Math.floor(Math.random() * visible.length)];
+      appState.hoveredId = pick.id;
+      highlightPeekCard(pick.id);
+      openPanel(pick.id);
+    }
+
+    document.getElementById('surprise-btn').addEventListener('click', surpriseMe);
+    document.getElementById('mobile-surprise-btn').addEventListener('click', surpriseMe);
+
+    // ── Filter dropdown toggles ───────────────────────────────────────────────
+    const filterPanels = {
+      rating:   document.getElementById('filter-rating-panel'),
+      cuisines: document.getElementById('filter-cuisines-panel'),
+      sort:     document.getElementById('filter-sort-panel'),
+    };
+    const filterButtons = {
+      rating:   document.getElementById('filter-rating-btn'),
+      cuisines: document.getElementById('filter-cuisines-btn'),
+      sort:     document.getElementById('filter-sort-btn'),
+    };
+
+    function closeAllFilterPanels() {
+      const cuisinesWasOpen = filterPanels.cuisines.classList.contains('open');
+      for (const key of Object.keys(filterPanels)) {
+        filterPanels[key].classList.remove('open');
+        filterButtons[key].classList.remove('active');
+        filterButtons[key].setAttribute('aria-expanded', 'false');
+      }
+      if (cuisinesWasOpen) applyCuisinesDraft();
+      updateRatingButtonLabel();
+      updateCuisinesButtonLabel();
+      updateSortButtonLabel();
+    }
+
+    function toggleFilterPanel(key) {
+      const isOpen = filterPanels[key].classList.contains('open');
+      closeAllFilterPanels();
+      if (!isOpen) {
+        filterPanels[key].classList.add('open');
+        filterButtons[key].classList.add('active');
+        filterButtons[key].setAttribute('aria-expanded', 'true');
+        if (key === 'cuisines') openCuisinesPopover();
+        updateRatingButtonLabel();
+        updateCuisinesButtonLabel();
+        updateSortButtonLabel();
+      }
+    }
+
+    filterButtons.rating.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleFilterPanel('rating');
+    });
+    filterPanels.rating.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+    filterButtons.cuisines.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleFilterPanel('cuisines');
+    });
+    filterPanels.cuisines.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+    filterButtons.sort.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleFilterPanel('sort');
+    });
+    filterPanels.sort.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+
+    document.addEventListener('click', function (e) {
+      const ratingWrap = document.getElementById('filter-rating-wrap');
+      if (ratingWrap && !ratingWrap.contains(e.target)) {
+        if (filterPanels.rating.classList.contains('open')) {
+          filterPanels.rating.classList.remove('open');
+          filterButtons.rating.classList.remove('active');
+          filterButtons.rating.setAttribute('aria-expanded', 'false');
+          updateRatingButtonLabel();
+        }
+      }
+      const cuisinesOpen = filterPanels.cuisines.classList.contains('open');
+      const filterControls = document.getElementById('filter-controls');
+      if (cuisinesOpen && filterControls && !filterControls.contains(e.target)) {
+        applyCuisinesDraft();
+        filterPanels.cuisines.classList.remove('open');
+        filterButtons.cuisines.classList.remove('active');
+        filterButtons.cuisines.setAttribute('aria-expanded', 'false');
+        updateCuisinesButtonLabel();
+      }
+      if (!e.target.closest('.filter-dropdown-wrap') && !e.target.closest('.cuisines-popover')) {
+        const sortOpen = filterPanels.sort.classList.contains('open');
+        if (sortOpen) {
+          filterPanels.sort.classList.remove('open');
+          filterButtons.sort.classList.remove('active');
+          filterButtons.sort.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+
+    document.getElementById('filter-sort-panel').addEventListener('click', function (e) {
+      const option = e.target.closest('.sort-option');
+      if (!option) return;
+      appState.sortBy = option.dataset.sort;
+      syncSortOptions();
+      updateSortButtonLabel();
+      filterPanels.sort.classList.remove('open');
+      filterButtons.sort.classList.remove('active');
+      filterButtons.sort.setAttribute('aria-expanded', 'false');
+      appState.currentPage = 1;
+      render();
+    });
+
+    // ── Pagination ────────────────────────────────────────────────────────────
+    pagePrev.addEventListener('click', function () {
+      if (appState.currentPage <= 1) return;
+      appState.currentPage -= 1;
+      render();
+      cardList.scrollTop = 0;
+    });
+
+    pageNext.addEventListener('click', function () {
+      const visible = getVisibleRestaurants();
+      const { totalPages } = getPagedRestaurants(visible);
+      if (appState.currentPage >= totalPages) return;
+      appState.currentPage += 1;
+      render();
+      cardList.scrollTop = 0;
+    });
+
+    // ── Mobile filter toggle — removed; modal is separate overlay ─────────────
+
+    // ── Mobile dot-selected sheet ─────────────────────────────────────────────
+    const mobileSheet       = document.getElementById('mobile-bottom-sheet');
+    const mobileDotPhoto    = document.getElementById('mobile-dot-photo');
+    const mobileDotCountry  = document.getElementById('mobile-dot-country');
+    const mobileDotTag      = document.getElementById('mobile-dot-tag');
+    const mobileDotName     = document.getElementById('mobile-dot-name');
+    const mobileDotAddress  = document.getElementById('mobile-dot-address');
+    const mobileDotRating   = document.getElementById('mobile-dot-rating');
+    const mobileDotReadMore = document.getElementById('mobile-dot-read-more');
+
+    function openMobileDotSheet(id) {
+      const restaurant = restaurants.find(function (r) { return r.id === id; });
+      if (!restaurant) return;
+      mobileDotPhoto.src = restaurant.photo + '?w=400&q=80';
+      mobileDotPhoto.style.backgroundColor = genreColors[restaurant.genre] || 'var(--color-border)';
+      mobileDotCountry.textContent = restaurant.flag + ' ' + restaurant.country;
+      mobileDotTag.textContent = restaurant.tag;
+      mobileDotName.textContent = restaurant.name;
+      mobileDotAddress.textContent = '◎ ' + restaurant.address;
+      mobileDotRating.textContent = '★ ' + restaurant.rating.toFixed(1);
+      mobileDotReadMore.dataset.id = id;
+      if (mobileFilterModal.classList.contains('open')) closeMobileFilter();
+      mobileSheet.classList.add('dot-selected');
+    }
+
+    function closeMobileDotSheet() {
+      mobileSheet.classList.remove('dot-selected');
+    }
+
+    mobileDotReadMore.addEventListener('click', function () {
+      const id = this.dataset.id;
+      closeMobileDotSheet();
+      openPanel(id);
+    });
+
+    // Tapping the map outside a dot dismisses the dot sheet on mobile
+    document.getElementById('panel-map').addEventListener('click', function (e) {
+      if (e.target.closest('.restaurant-dot')) return;
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        closeMobileDotSheet();
+      }
+    });
+
+    // ── Detail views ──────────────────────────────────────────────────────────
+    let panelCloseTimer = null;
+    let panelTriggerEl  = null;
+    let leftDetailRestore = null;
+    const panelEl         = document.getElementById('panel-right');
+    const panelLeft       = document.getElementById('panel-left');
+    const leftDetailView  = document.getElementById('left-detail-view');
+    const focusableSelector = 'button, [href], input, [tabindex]:not([tabindex="-1"])';
+
+    function isMobileViewport() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function setSelectedDot(id) {
+      for (const dot of dotLayer.querySelectorAll('.restaurant-dot')) {
+        dot.classList.toggle('selected', dot.dataset.id === id);
+      }
+    }
+
+    function clearSelectedDot() {
+      for (const dot of dotLayer.querySelectorAll('.restaurant-dot')) {
+        dot.classList.remove('selected');
+      }
+    }
+
+    let detailFactSlides = [];
+    let detailFactIndex = 0;
+    let activeDetailPrefix = 'left-detail';
+    const mobileDetailModal = document.getElementById('mobile-detail-modal');
+    const mobileDetailPanel = document.getElementById('mobile-detail-panel');
+
+    function detailEl(suffix) {
+      return document.getElementById(activeDetailPrefix + '-' + suffix);
+    }
+
+    function buildFactSlides(restaurant) {
+      const slides = [];
+      if (restaurant.funFact) slides.push(restaurant.funFact);
+      if (restaurant.reviewText && restaurant.reviewText !== restaurant.funFact) {
+        slides.push(restaurant.reviewText);
+      }
+      return slides.length ? slides : [''];
+    }
+
+    function renderFactSlide() {
+      const label = detailEl('fact-label');
+      const text = detailEl('fun-fact');
+      const prevBtn = document.getElementById(activeDetailPrefix + '-fact-prev');
+      const nextBtn = document.getElementById(activeDetailPrefix + '-fact-next');
+      const slideNum = detailFactIndex + 1;
+      const total = detailFactSlides.length;
+      if (activeDetailPrefix === 'mobile-detail') {
+        label.innerHTML = 'fun fact ' + slideNum + '<span class="detail-fact-total">/' + total + '</span>';
+      } else {
+        label.textContent = 'fun fact #' + slideNum;
+      }
+      text.textContent = detailFactSlides[detailFactIndex] || '';
+      prevBtn.disabled = detailFactIndex <= 0;
+      nextBtn.disabled = detailFactIndex >= detailFactSlides.length - 1;
+    }
+
+    function initFactCarousel(restaurant) {
+      detailFactSlides = buildFactSlides(restaurant);
+      detailFactIndex = 0;
+      detailEl('fact-photo').src = 'assets/fun-fact-thumb.png';
+      renderFactSlide();
+    }
+
+    function populateDetailView(prefix, restaurant) {
+      activeDetailPrefix = prefix;
+      const photoUrl = restaurant.photo + '?w=800&q=80';
+      const hero = detailEl('hero');
+      hero.src = photoUrl;
+      hero.alt = restaurant.name;
+      detailEl('country').textContent = restaurant.flag + ' ' + restaurant.country;
+      detailEl('tag').textContent = restaurant.tag;
+      detailEl('name').textContent = restaurant.name;
+      detailEl('address').textContent = restaurant.address;
+      detailEl('rating').textContent = restaurant.rating.toFixed(1);
+      initFactCarousel(restaurant);
+      detailEl('review').textContent = restaurant.reviewText;
+      const dishesList = detailEl('dishes');
+      dishesList.innerHTML = '';
+      (restaurant.dishes || []).forEach(function (dish) {
+        const item = document.createElement('li');
+        item.textContent = dish;
+        dishesList.appendChild(item);
+      });
+      if (prefix === 'left-detail') updateLeftDetailNav(restaurant.id);
+    }
+
+    function populateLeftDetail(restaurant) {
+      populateDetailView('left-detail', restaurant);
+    }
+
+    function updateLeftDetailNav(id) {
+      const visible = getVisibleRestaurants();
+      const index = visible.findIndex(function (restaurant) { return restaurant.id === id; });
+      const prevCountryBtn = document.getElementById('left-detail-prev-country');
+      const nextCountryBtn = document.getElementById('left-detail-next-country');
+      const prevBtn = document.getElementById('left-detail-prev-btn');
+      const nextBtn = document.getElementById('left-detail-next-btn');
+      const hasPrev = index > 0;
+      const hasNext = index >= 0 && index < visible.length - 1;
+
+      if (hasPrev) {
+        const prev = visible[index - 1];
+        prevCountryBtn.textContent = prev.country;
+        prevCountryBtn.dataset.id = prev.id;
+        prevCountryBtn.disabled = false;
+        prevBtn.dataset.id = prev.id;
+        prevBtn.disabled = false;
+      } else {
+        prevCountryBtn.textContent = '';
+        prevCountryBtn.disabled = true;
+        prevBtn.disabled = true;
+        delete prevBtn.dataset.id;
+      }
+
+      if (hasNext) {
+        const next = visible[index + 1];
+        nextCountryBtn.textContent = next.country;
+        nextCountryBtn.dataset.id = next.id;
+        nextCountryBtn.disabled = false;
+        nextBtn.dataset.id = next.id;
+        nextBtn.disabled = false;
+      } else {
+        nextCountryBtn.textContent = '';
+        nextCountryBtn.disabled = true;
+        nextBtn.disabled = true;
+        delete nextBtn.dataset.id;
+      }
+    }
+
+    function navigateLeftDetail(id) {
+      const restaurant = restaurants.find(function (entry) { return entry.id === id; });
+      if (!restaurant) return;
+      activeDetailPrefix = 'left-detail';
+      populateLeftDetail(restaurant);
+      appState.selectedId = id;
+      setSelectedDot(id);
+      leftDetailView.scrollTop = 0;
+    }
+
+    function openMobileDetail(id) {
+      const restaurant = restaurants.find(function (r) { return r.id === id; });
+      if (!restaurant) return;
+      if (mobileFilterModal.classList.contains('open')) closeMobileFilter();
+      if (mobileSheet.classList.contains('dot-selected')) closeMobileDotSheet();
+      if (document.body.classList.contains('panel-open')) closeRightPanel();
+      panelTriggerEl = document.activeElement;
+      populateDetailView('mobile-detail', restaurant);
+      clearTimeout(panelCloseTimer);
+      appState.selectedId = id;
+      setSelectedDot(id);
+      highlightPeekCard(id);
+      mobileDetailModal.classList.add('open');
+      mobileDetailModal.setAttribute('aria-hidden', 'false');
+      mobileDetailPanel.scrollTop = 0;
+      document.getElementById('mobile-detail-close').focus();
+    }
+
+    function closeMobileDetail() {
+      mobileDetailModal.classList.remove('open');
+      mobileDetailModal.setAttribute('aria-hidden', 'true');
+      appState.selectedId = null;
+      clearSelectedDot();
+      clearPeekHighlight();
+      if (panelTriggerEl) {
+        panelTriggerEl.focus();
+        panelTriggerEl = null;
+      }
+      panelCloseTimer = setTimeout(function () {
+        document.getElementById('mobile-detail-hero').src = '';
+        document.getElementById('mobile-detail-fact-photo').src = '';
+      }, 300);
+    }
+
+    function handleFactPrev() {
+      if (detailFactIndex <= 0) return;
+      detailFactIndex -= 1;
+      renderFactSlide();
+    }
+
+    function handleFactNext() {
+      if (detailFactIndex >= detailFactSlides.length - 1) return;
+      detailFactIndex += 1;
+      renderFactSlide();
+    }
+
+    document.getElementById('left-detail-fact-prev').addEventListener('click', function () {
+      activeDetailPrefix = 'left-detail';
+      handleFactPrev();
+    });
+    document.getElementById('left-detail-fact-next').addEventListener('click', function () {
+      activeDetailPrefix = 'left-detail';
+      handleFactNext();
+    });
+    document.getElementById('mobile-detail-fact-prev').addEventListener('click', function () {
+      activeDetailPrefix = 'mobile-detail';
+      handleFactPrev();
+    });
+    document.getElementById('mobile-detail-fact-next').addEventListener('click', function () {
+      activeDetailPrefix = 'mobile-detail';
+      handleFactNext();
+    });
+
+    function openLeftDetail(id) {
+      const restaurant = restaurants.find(r => r.id === id);
+      if (!restaurant) return;
+      if (document.body.classList.contains('panel-open')) closeRightPanel();
+      leftDetailRestore = {
+        scrollTop: cardList.scrollTop,
+        triggerEl: document.activeElement,
+      };
+      closeAllFilterPanels();
+      populateLeftDetail(restaurant);
+      clearTimeout(panelCloseTimer);
+      panelTriggerEl = leftDetailRestore.triggerEl;
+      appState.selectedId = id;
+      panelLeft.classList.add('detail-open');
+      leftDetailView.setAttribute('aria-hidden', 'false');
+      setSelectedDot(id);
+      leftDetailView.scrollTop = 0;
+      document.getElementById('left-detail-close').focus();
+    }
+
+    document.getElementById('left-detail-nav').addEventListener('click', function (e) {
+      const target = e.target.closest('[data-id]');
+      if (!target || !target.dataset.id) return;
+      navigateLeftDetail(target.dataset.id);
+    });
+
+    function closeLeftDetail() {
+      panelLeft.classList.remove('detail-open');
+      leftDetailView.setAttribute('aria-hidden', 'true');
+      appState.selectedId = null;
+      clearSelectedDot();
+      if (leftDetailRestore) {
+        cardList.scrollTop = leftDetailRestore.scrollTop;
+        leftDetailRestore = null;
+      }
+      if (panelTriggerEl) {
+        panelTriggerEl.focus();
+        panelTriggerEl = null;
+      }
+      panelCloseTimer = setTimeout(function () {
+        document.getElementById('left-detail-hero').src = '';
+        document.getElementById('left-detail-fact-photo').src = '';
+      }, 300);
+    }
+
+    function trapFocus(e) {
+      const focusable = Array.from(panelEl.querySelectorAll(focusableSelector));
+      const first = focusable[0];
+      const last  = focusable[focusable.length - 1];
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+      }
+    }
+
+    function openRightPanel(id) {
+      const restaurant = restaurants.find(r => r.id === id);
+      if (!restaurant) return;
+      if (panelLeft.classList.contains('detail-open')) closeLeftDetail();
+      const photo = document.getElementById('detail-photo');
+      photo.src = restaurant.photo;
+      photo.alt = restaurant.name;
+      document.getElementById('detail-hero-bg').style.backgroundColor = genreColors[restaurant.genre] || 'var(--color-border)';
+      document.getElementById('detail-country').textContent  = restaurant.flag + ' ' + restaurant.country;
+      document.getElementById('detail-tag').textContent      = restaurant.tag;
+      document.getElementById('detail-name').textContent     = restaurant.name;
+      document.getElementById('detail-address').textContent  = restaurant.address;
+      document.getElementById('detail-rating').textContent   = restaurant.rating.toFixed(1);
+      const dishesList = document.getElementById('detail-dishes');
+      dishesList.innerHTML = '';
+      (restaurant.dishes || []).forEach(function (dish) {
+        const item = document.createElement('li');
+        item.textContent = dish;
+        dishesList.appendChild(item);
+      });
+      document.getElementById('detail-fun-fact').textContent = restaurant.funFact || '';
+      document.getElementById('detail-review').textContent   = restaurant.reviewText;
+      panelTriggerEl = document.activeElement;
+      appState.selectedId = id;
+      clearTimeout(panelCloseTimer);
+      document.body.classList.add('panel-open');
+      document.getElementById('panel-close').focus();
+      panelEl.addEventListener('keydown', trapFocus);
+    }
+
+    function closeRightPanel() {
+      document.body.classList.remove('panel-open');
+      panelEl.removeEventListener('keydown', trapFocus);
+      appState.selectedId = null;
+      if (panelTriggerEl) { panelTriggerEl.focus(); panelTriggerEl = null; }
+      panelCloseTimer = setTimeout(() => { document.getElementById('detail-photo').src = ''; }, 300);
+    }
+
+    function openPanel(id) {
+      if (isMobileViewport()) openMobileDetail(id);
+      else openLeftDetail(id);
+    }
+
+    function closePanel() {
+      if (mobileDetailModal.classList.contains('open')) {
+        closeMobileDetail();
+      } else if (document.body.classList.contains('panel-open')) {
+        closeRightPanel();
+      } else if (panelLeft.classList.contains('detail-open')) {
+        closeLeftDetail();
+      }
+    }
+
+    document.getElementById('panel-close').addEventListener('click', closeRightPanel);
+    document.getElementById('left-detail-close').addEventListener('click', closeLeftDetail);
+    document.getElementById('mobile-detail-close').addEventListener('click', closeMobileDetail);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        if (mobileFilterModal.classList.contains('open')) {
+          closeMobileFilter();
+        } else if (mobileDetailModal.classList.contains('open')) {
+          closeMobileDetail();
+        } else if (appState.selectedId !== null || panelLeft.classList.contains('detail-open')) {
+          closePanel();
+        }
+      }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    initDots();
+    updateRatingDisplay(RATING_MIN);
+    updateCuisinesButtonLabel();
+    updateSortButtonLabel();
+    syncSortOptions();
+    render();
+    } // end startApp
+  </script>
+
+</body>
+</html>

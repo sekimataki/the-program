@@ -1,0 +1,7 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 140 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 4">
+<rect id="track" y="2" width="140" height="4" rx="2" fill="var(--fill-0, #D8D4D1)"/>
+<rect id="track-fill" y="2" width="118" height="4" rx="2" fill="var(--fill-0, #6A6564)"/>
+<circle id="thumb" cx="118" cy="4" r="4" fill="var(--fill-0, #0A0908)"/>
+</g>
+</svg>
