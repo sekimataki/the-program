@@ -52,6 +52,121 @@
       --dur-fast:     120ms;
       --dur-mid:      150ms;
       --dur-panel:    300ms;
+
+      --landing-total:    2000ms;
+      --landing-dissolve: 600ms;
+      --landing-shake:    1400ms;
+    }
+
+    /* ── Landing splash (Figma 83-97) ────────────────────────────────────────── */
+    .landing-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: var(--color-panel);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity var(--landing-dissolve) ease;
+    }
+    .landing-splash.is-dissolving {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .landing-stage {
+      position: relative;
+      width: min(448px, 90vw);
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .landing-brand {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+      width: 100%;
+    }
+    .landing-title {
+      font-family: var(--font-unicase);
+      font-size: clamp(40px, 10vw, 64px);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: var(--color-ink);
+      line-height: 1;
+      width: 100%;
+    }
+    .landing-subtitle {
+      font-family: var(--font-ui);
+      font-size: clamp(14px, 3.5vw, 20px);
+      font-weight: 400;
+      color: var(--color-dim);
+      text-align: center;
+      width: 100%;
+    }
+    .landing-head {
+      position: absolute;
+      width: 86px;
+      height: 86px;
+      animation: landing-head-shake var(--landing-shake) ease-in-out;
+    }
+    .landing-head-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      mix-blend-mode: multiply;
+      transform: rotate(var(--head-rotate, 0deg));
+    }
+    .landing-head-inner img {
+      width: 120%;
+      height: 120%;
+      margin: -10% 0 0 -10%;
+      object-fit: cover;
+      display: block;
+    }
+    .landing-head-1 {
+      top: -18%;
+      right: -6%;
+      --head-rotate: 15deg;
+    }
+    .landing-head-2 {
+      top: 22%;
+      left: -20%;
+      --head-rotate: 165deg;
+    }
+    .landing-head-2 .landing-head-inner {
+      transform: rotate(var(--head-rotate)) scaleY(-1);
+    }
+    .landing-head-3 {
+      bottom: -22%;
+      right: -4%;
+      --head-rotate: 15deg;
+    }
+    @keyframes landing-head-shake {
+      0%, 100% { transform: rotate(0deg); }
+      12.5% { transform: rotate(15deg); }
+      37.5% { transform: rotate(-15deg); }
+      62.5% { transform: rotate(15deg); }
+      87.5% { transform: rotate(-15deg); }
+    }
+    .app-shell {
+      opacity: 0;
+      transition: opacity var(--landing-dissolve) ease;
+      height: 100%;
+    }
+    .app-shell.is-visible {
+      opacity: 1;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .landing-head { animation: none; }
+      .landing-splash,
+      .app-shell { transition: none; }
     }
 
     /* ── Reset ───────────────────────────────────────────────────────────────── */
@@ -1500,6 +1615,32 @@
 </head>
 <body>
 
+  <div class="landing-splash" id="landing-splash" aria-hidden="false">
+    <div class="landing-stage">
+      <div class="landing-head landing-head-1" aria-hidden="true">
+        <div class="landing-head-inner">
+          <img src="assets/landing-head-1.png" alt="">
+        </div>
+      </div>
+      <div class="landing-head landing-head-2" aria-hidden="true">
+        <div class="landing-head-inner">
+          <img src="assets/landing-head-2.png" alt="">
+        </div>
+      </div>
+      <div class="landing-head landing-head-3" aria-hidden="true">
+        <div class="landing-head-inner">
+          <img src="assets/landing-head-3.png" alt="">
+        </div>
+      </div>
+      <div class="landing-brand">
+        <h1 class="landing-title">The Program</h1>
+        <p class="landing-subtitle">3 friends exploring cuisines from around the world in San Francisco</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell" id="app-shell">
+
   <!-- ── Mobile top bar ────────────────────────────────────────────────────── -->
   <header class="mobile-topbar" id="mobile-topbar">
     <div class="mobile-topbar-brand">
@@ -1862,7 +2003,33 @@
     </div>
   </aside>
 
+  </div><!-- /.app-shell -->
+
   <script>
+    (function initLandingSplash() {
+      const LANDING_TOTAL_MS = 2000;
+      const LANDING_DISSOLVE_MS = 600;
+      const splash = document.getElementById('landing-splash');
+      const appShell = document.getElementById('app-shell');
+      if (!splash || !appShell) return;
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        splash.remove();
+        appShell.classList.add('is-visible');
+        return;
+      }
+
+      window.setTimeout(function () {
+        splash.classList.add('is-dissolving');
+        splash.setAttribute('aria-hidden', 'true');
+        appShell.classList.add('is-visible');
+      }, LANDING_TOTAL_MS - LANDING_DISSOLVE_MS);
+
+      window.setTimeout(function () {
+        splash.remove();
+      }, LANDING_TOTAL_MS);
+    })();
+
     // ── Genre colors ──────────────────────────────────────────────────────────
     const genreColors = {
       'East Asian':              '#C9845A',
